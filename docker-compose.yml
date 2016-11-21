@@ -6,6 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     volumes:
+      - ./lib:/package/lib
       - ./src:/package/src
       - ./tests:/package/tests
       - ./.babelrc:/package/.babelrc
