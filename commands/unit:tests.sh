@@ -4,7 +4,9 @@ set -e
 
 source "${BASH_SOURCE%/*}/common.sh"
 
-cleanContainers
 echo
-echo 'Start unit tests'
+echo 'UNIT TESTS'
+cleanContainers
+echo 'Start tests'
+echo
 docker-compose -p $COMPOSE_PROJECT run development better-npm-run unit:tests
