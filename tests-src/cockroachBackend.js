@@ -1,3 +1,4 @@
+import path from 'path'
 import pg from 'pg'
 import { random, pick, uniq, min, isInteger } from 'lodash'
 import shortid from 'shortid'
@@ -14,7 +15,13 @@ global.testData = {
   snapshots: Immutable.fromJS(data.snapshots)
 }
 
-import CockroachBackend from '../src/BackendInterface/backends/cockroachdb'
+var codePath = path.resolve(__dirname, '..', process.env.CODE_PATH)
+function pathTo (dest) {
+  return path.resolve(codePath, dest)
+}
+
+var eventRecordToDTO = require(pathTo('BackendInterface/backends/cockroachdb/helpers/eventRecordToDTO')).default
+var CockroachBackend = require(pathTo('BackendInterface/backends/cockroachdb')).default
 
 let cockroachCoordinates = {
   host: process.env.COCKROACH_HOST || 'cockroach',
@@ -1072,6 +1079,37 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     ee.on('storedEvents', () => done(new Error('should not emit `storedEvents`, but `error`')))
   })
   it('writes to aggregate\'streams within a serialized transaction')
+})
+
+describe('Helper eventRecordToDTO(record)', () => {
+  it('transforms an events\'table row into a valid DTO representing an event', () => {
+    let storedOn = new Date()
+    let dbReacord = {
+      id: 123,
+      type: 'MyEvent',
+      aggregateId: 456,
+      aggregateType: 'MyAggregate',
+      storedOn,
+      sequenceNumber: 5,
+      data: 'myData',
+      metadata: 'myData',
+      transactionId: 'abc'
+    }
+    let expectedDTO = {
+      id: 123,
+      type: 'MyEvent',
+      aggregateIdentity: {
+        id: 456,
+        type: 'MyAggregate'
+      },
+      storedOn: storedOn.toISOString(),
+      sequenceNumber: 5,
+      data: 'myData',
+      metadata: 'myData',
+      transactionId: 'abc'
+    }
+    should(eventRecordToDTO(dbReacord)).eql(expectedDTO)
+  })
 })
 
 function getClient () {

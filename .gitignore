@@ -3,6 +3,9 @@
 # Distribution folder
 lib/
 
+# Distribution folder
+tests/
+
 # NPM stuff
 node_modules
 npm-debug.log

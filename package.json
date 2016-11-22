@@ -4,19 +4,66 @@
   "description": "An Event Store with a gRPC interface",
   "main": "lib/index.js",
   "scripts": {
-    "unit:tests:live": "npm run clean && docker-compose run development npm run i:unit:tests:live",
-    "cockroach:tests:live": "npm run clean && docker-compose up -d cockroach && sleep 4 && docker-compose run development npm run i:cockroach:tests:live",
-    "prepublish": "./internals/prepublish.sh",
-    "test": "./internals/runTestSuite.sh",
-    "release": "./internals/release.sh",
-    "stop": "docker-compose stop",
-    "rm": "docker-compose rm -f",
-    "clean": "npm run stop && npm run rm",
-    "i:unit:tests": "mocha --compilers js:babel-register tests/unit.js",
-    "i:unit:tests:live": "mocha --compilers js:babel-register -b -w tests/unit.js",
-    "i:cockroach:tests": "mocha --compilers js:babel-register tests/cockroachBackend.js",
-    "i:cockroach:tests:live": "mocha --compilers js:babel-register -b -w tests/cockroachBackend.js",
-    "i:transpile": "babel src -d lib"
+    "clean": "./commands/clean.sh",
+    "sql": "./commands/sql.sh",
+
+    "dev:unit:tests": "./commands/dev:unit:tests.sh",
+    "dev:cockroach:backend:tests": "./commands/dev:cockroach:backend:tests.sh",
+    "dev:integration:tests": "./commands/dev:integration:tests.sh",
+
+    "transpile:package": "./commands/transpile:package.sh",
+    "transpile:tests": "./commands/transpile:tests.sh",
+    "unit:tests": "./commands/unit:tests.sh",
+    "cockroach:backend:tests": "./commands/cockroach:backend:tests.sh",
+    "integration:tests": "./commands/integration:tests.sh",
+    "test": "./commands/run:all:tests.sh"
+  },
+  "betterScripts": {
+    "unit:tests": {
+      "command": "mocha tests/unit",
+      "env": {
+        "CODE_PATH": "lib"
+      }
+    },
+    "unit:tests:live": {
+      "command": "mocha --compilers js:babel-register -b -w tests-src/unit",
+      "env": {
+        "CODE_PATH": "src"
+      }
+    },
+    "cockroach:backend:tests": {
+      "command": "mocha tests/cockroachBackend.js",
+      "env": {
+        "CODE_PATH": "lib"
+      }
+    },
+    "cockroach:backend:tests:live": {
+      "command": "mocha --compilers js:babel-register -b -w tests-src/cockroachBackend.js",
+      "env": {
+        "CODE_PATH": "src"
+      }
+    },
+    "integration:tests": {
+      "command": "mocha tests/integration.js",
+      "env": {
+        "CODE_PATH": "lib"
+      }
+    },
+    "integration:tests:live": {
+      "command": "mocha --compilers js:babel-register -b -w tests-src/integration.js",
+      "env": {
+        "CODE_PATH": "src"
+      }
+    },
+    "start:testnode": {
+      "command": "babel-node tests-src/testNode.js"
+    },
+    "transpile:package": {
+      "command": "rm -rf lib/* && babel src -D -d lib"
+    },
+    "transpile:tests": {
+      "command": "rm -rf tests/* && babel tests-src -D -d tests"
+    }
   },
   "dependencies": {
     "bluebird": "^3.4.6",
@@ -33,6 +80,7 @@
     "babel-cli": "^6.14.0",
     "babel-plugin-transform-object-rest-spread": "^6.8.0",
     "babel-preset-es2015": "^6.14.0",
+    "better-npm-run": "0.0.13",
     "immutable": "^3.8.1",
     "mocha": "^3.0.2",
     "should": "^11.1.0",

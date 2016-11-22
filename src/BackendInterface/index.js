@@ -22,7 +22,7 @@ function BackendInterface (_settings) {
 const defaultSettings = {
   type: 'cockroachdb',
   host: 'localhost',
-  port: 1234,
+  port: 26257,
   database: 'eventstore',
   user: 'root'
 }

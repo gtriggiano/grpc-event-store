@@ -16,7 +16,7 @@ function CockroachDBBackend (_settings) {
 
   // Public API
   function setup (done) {
-    getConnection((err, {client, release}) => {
+    getConnection((err, {client, release} = {}) => {
       if (err) return done(err)
       setupDatabase(client)
         .then(() => done())

@@ -1,9 +1,14 @@
+import path from 'path'
 import Immutable from 'immutable'
 import sinon from 'sinon'
 import { range, sample, random, isArray, pick } from 'lodash'
 import EventEmitter from 'eventemitter3'
 
-import { eventsStreamFromBus } from '../src/utils'
+var codePath = path.resolve(__dirname, '..', process.env.CODE_PATH)
+function pathTo (dest) {
+  return path.resolve(codePath, dest)
+}
+var eventsStreamFromBus = require(pathTo('utils')).eventsStreamFromBus
 
 const AGGREGATES_NUM = 200
 const AGGREGATE_TYPES = Immutable.fromJS(range(3, 30).map(n => `Type${n}`))
