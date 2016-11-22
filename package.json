@@ -15,6 +15,7 @@
     "transpile:tests": "./commands/transpile:tests.sh",
     "unit:tests": "./commands/unit:tests.sh",
     "cockroach:backend:tests": "./commands/cockroach:backend:tests.sh",
+    "integration:tests": "./commands/integration:tests.sh",
     "test": "./commands/run:all:tests.sh"
   },
   "betterScripts": {
@@ -45,7 +46,7 @@
     "integration:tests": {
       "command": "mocha tests/integration.js",
       "env": {
-        "CODE_PATH": "src"
+        "CODE_PATH": "lib"
       }
     },
     "integration:tests:live": {
