@@ -20,6 +20,7 @@ function pathTo (dest) {
   return path.resolve(codePath, dest)
 }
 
+var eventRecordToDTO = require(pathTo('BackendInterface/backends/cockroachdb/helpers/eventRecordToDTO')).default
 var CockroachBackend = require(pathTo('BackendInterface/backends/cockroachdb')).default
 
 let cockroachCoordinates = {
@@ -1078,6 +1079,37 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     ee.on('storedEvents', () => done(new Error('should not emit `storedEvents`, but `error`')))
   })
   it('writes to aggregate\'streams within a serialized transaction')
+})
+
+describe('Helper eventRecordToDTO(record)', () => {
+  it('transforms an events\'table row into a valid DTO representing an event', () => {
+    let storedOn = new Date()
+    let dbReacord = {
+      id: 123,
+      type: 'MyEvent',
+      aggregateId: 456,
+      aggregateType: 'MyAggregate',
+      storedOn,
+      sequenceNumber: 5,
+      data: 'myData',
+      metadata: 'myData',
+      transactionId: 'abc'
+    }
+    let expectedDTO = {
+      id: 123,
+      type: 'MyEvent',
+      aggregateIdentity: {
+        id: 456,
+        type: 'MyAggregate'
+      },
+      storedOn: storedOn.toISOString(),
+      sequenceNumber: 5,
+      data: 'myData',
+      metadata: 'myData',
+      transactionId: 'abc'
+    }
+    should(eventRecordToDTO(dbReacord)).eql(expectedDTO)
+  })
 })
 
 function getClient () {

@@ -18,7 +18,7 @@ function eventRecordToDTO (record) {
       id: aggregateId,
       type: aggregateType
     },
-    storedOn,
+    storedOn: storedOn.toISOString(),
     sequenceNumber: parseInt(sequenceNumber, 10),
     data: data.toString(),
     metadata: metadata.toString(),
