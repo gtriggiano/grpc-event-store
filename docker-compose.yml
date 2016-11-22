@@ -4,11 +4,12 @@ services:
   development:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: docker/Dev.dockerfile
     volumes:
       - ./lib:/package/lib
       - ./src:/package/src
       - ./tests:/package/tests
+      - ./tests-src:/package/tests-src
       - ./.babelrc:/package/.babelrc
       - ./GRPCEventStore.proto:/package/GRPCEventStore.proto
       - ./package.json:/package/package.json

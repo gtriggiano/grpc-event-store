@@ -1,9 +1,17 @@
+import path from 'path'
 import should from 'should/as-function'
 import EventEmitter from 'eventemitter3'
 
-import { ServiceNode } from '../src'
 import { getSimulationData } from './InMemorySimulation'
 global.data = getSimulationData()
+
+var codePath = path.resolve(__dirname, '..', process.env.CODE_PATH)
+function pathTo (dest) {
+  return path.resolve(codePath, dest)
+}
+
+var lib = require(codePath)
+var ServiceNode = lib.ServiceNode
 
 describe('GRPC Event Store Package Unit Tests', function () {
   it('should be fun to work with', () => {})
@@ -16,9 +24,9 @@ describe('GRPC Event Store Package Unit Tests', function () {
   })
 })
 
-require('../src/_unitTestUtils')
-require('../src/_unitTestBackendInterface')
-require('../src/_unitTestStoreInterface')
-require('../src/_unitTestGRPCInterface')
-require('../src/_unitTestGRPCImplementation')
-require('../src/_unitTestServiceNode')
+require(pathTo('_unitTestUtils'))
+require(pathTo('_unitTestBackendInterface'))
+require(pathTo('_unitTestStoreInterface'))
+require(pathTo('_unitTestGRPCInterface'))
+require(pathTo('_unitTestGRPCImplementation'))
+require(pathTo('_unitTestServiceNode'))

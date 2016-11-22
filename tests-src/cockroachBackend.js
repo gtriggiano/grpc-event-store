@@ -1,3 +1,4 @@
+import path from 'path'
 import pg from 'pg'
 import { random, pick, uniq, min, isInteger } from 'lodash'
 import shortid from 'shortid'
@@ -14,7 +15,12 @@ global.testData = {
   snapshots: Immutable.fromJS(data.snapshots)
 }
 
-import CockroachBackend from '../src/BackendInterface/backends/cockroachdb'
+var codePath = path.resolve(__dirname, '..', process.env.CODE_PATH)
+function pathTo (dest) {
+  return path.resolve(codePath, dest)
+}
+
+var CockroachBackend = require(pathTo('BackendInterface/backends/cockroachdb')).default
 
 let cockroachCoordinates = {
   host: process.env.COCKROACH_HOST || 'cockroach',
