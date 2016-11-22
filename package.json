@@ -1,6 +1,6 @@
 {
   "name": "grpc-event-store",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "An Event Store with a gRPC interface",
   "main": "lib/index.js",
   "scripts": {
