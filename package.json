@@ -1,16 +1,14 @@
 {
   "name": "grpc-event-store",
-  "version": "0.0.3",
+  "version": "0.0.7",
   "description": "An Event Store with a gRPC interface",
   "main": "lib/index.js",
   "scripts": {
     "clean": "./commands/clean.sh",
     "sql": "./commands/sql.sh",
-
     "dev:unit:tests": "./commands/dev:unit:tests.sh",
     "dev:cockroach:backend:tests": "./commands/dev:cockroach:backend:tests.sh",
     "dev:integration:tests": "./commands/dev:integration:tests.sh",
-
     "transpile:package": "./commands/transpile:package.sh",
     "transpile:tests": "./commands/transpile:tests.sh",
     "unit:tests": "./commands/unit:tests.sh",
