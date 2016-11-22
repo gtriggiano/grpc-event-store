@@ -5,6 +5,7 @@
   "main": "lib/index.js",
   "scripts": {
     "clean": "./commands/clean.sh",
+    "sql": "./commands/sql.sh",
 
     "dev:unit:tests": "./commands/dev:unit:tests.sh",
     "dev:cockroach:backend:tests": "./commands/dev:cockroach:backend:tests.sh",
@@ -40,6 +41,21 @@
       "env": {
         "CODE_PATH": "src"
       }
+    },
+    "integration:tests": {
+      "command": "mocha tests/integration.js",
+      "env": {
+        "CODE_PATH": "src"
+      }
+    },
+    "integration:tests:live": {
+      "command": "mocha --compilers js:babel-register -b -w tests-src/integration.js",
+      "env": {
+        "CODE_PATH": "src"
+      }
+    },
+    "start:testnode": {
+      "command": "babel-node tests-src/testNode.js"
     },
     "transpile:package": {
       "command": "rm -rf lib/* && babel src -D -d lib"

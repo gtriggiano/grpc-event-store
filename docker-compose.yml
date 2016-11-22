@@ -14,6 +14,18 @@ services:
       - ./GRPCEventStore.proto:/package/GRPCEventStore.proto
       - ./package.json:/package/package.json
 
+  test-node:
+    build:
+      context: .
+      dockerfile: docker/Dev.dockerfile
+    command: ["better-npm-run", "start:testnode"]
+    volumes:
+      - ./src:/package/src
+      - ./tests-src:/package/tests-src
+      - ./.babelrc:/package/.babelrc
+      - ./GRPCEventStore.proto:/package/GRPCEventStore.proto
+      - ./package.json:/package/package.json
+
   cockroach:
     image: cockroachdb/cockroach:beta-20161103
     ports:
