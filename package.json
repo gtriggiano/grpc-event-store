@@ -4,18 +4,17 @@
   "description": "An Event Store with a gRPC interface",
   "main": "lib/index.js",
   "scripts": {
-    "stop": "docker-compose stop",
-    "rm": "docker-compose rm -f",
-    "clean": "npm run stop && npm run rm",
+    "clean": "./commands/clean.sh",
 
-    "dev:unit:tests": "npm run clean && docker-compose run development better-npm-run unit:tests:live",
-    "dev:cockroach:backend:tests": "npm run clean && docker-compose up -d cockroach && sleep 4 && docker-compose run development better-npm-run cockroach:backend:tests:live",
+    "dev:unit:tests": "./commands/dev:unit:tests.sh",
+    "dev:cockroach:backend:tests": "./commands/dev:cockroach:backend:tests.sh",
+    "dev:integration:tests": "./commands/dev:integration:tests.sh",
 
-    "transpile:package": "docker-compose run development better-npm-run transpile:package",
-    "transpile:tests": "docker-compose run development better-npm-run transpile:tests",
-    "unit:tests": "docker-compose run development better-npm-run unit:tests",
-    "cockroach:backend:tests": "docker-compose run development better-npm-run cockroach:backend:tests",
-    "test": "./runTestSuite.sh"
+    "transpile:package": "./commands/transpile:package.sh",
+    "transpile:tests": "./commands/transpile:tests.sh",
+    "unit:tests": "./commands/unit:tests.sh",
+    "cockroach:backend:tests": "./commands/cockroach:backend:tests.sh",
+    "test": "./commands/run:all:tests.sh"
   },
   "betterScripts": {
     "unit:tests": {
