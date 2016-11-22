@@ -30,9 +30,13 @@ describe('Connection', function () {
 })
 
 describe('Ping', function () {
-  it('works', (done) => {
+  it('returns an empty object', (done) => {
     let {subscriber} = getActors()
-    subscriber.ping({}, (err) => done(err))
+    subscriber.ping({}, (err, response) => {
+      should(err).be.Null()
+      should(Object.keys(response).length).equal(0)
+      done()
+    })
   })
 })
 describe('GetUid', function () {
@@ -56,6 +60,7 @@ describe('SubscribeToStoreStream', () => {
     let receivedEvents = 0
 
     let readCall = subscriber.subscribeToStoreStream({})
+    readCall.on('error', noop)
     readCall.on('data', onEvent)
     function onEvent (event) {
       receivedEvents++
@@ -91,9 +96,7 @@ describe('SubscribeToStoreStreamFromEvent', function () {
     let from = last4Events.first().toJS()
     let storedEvents = last4Events.rest().toJS()
 
-    let {writer, subscriber} = getActors()
     let receivedEvents = []
-
     function onEvent (event) {
       receivedEvents.push(event)
       validateStoredEvent(event)
@@ -112,9 +115,11 @@ describe('SubscribeToStoreStreamFromEvent', function () {
       done()
     }
 
+    let {writer, subscriber} = getActors()
     let readCall = subscriber.subscribeToStoreStreamFromEvent({
       fromEventId: from.id
     })
+    readCall.on('error', noop)
     readCall.on('data', onEvent)
     writer.writeToAggregateStream({
       aggregateIdentity: {type: 'Aggregate', id: '123'},
@@ -131,7 +136,29 @@ describe('ReadStoreStreamForwardFromEvent', function () {
     this.timeout(0)
     return flushDB().then(() => populateDB())
   })
-  it('provides an ending stream of events generated after a certain one and until call time')
+  it('provides an ending stream of events generated after a certain one and until call time', (done) => {
+    let last30Events = testData.events.takeLast(30)
+    let from = last30Events.first().toJS()
+    let storedEvents = last30Events.rest().toJS()
+
+    let receivedEvents = []
+    function onEvent (event) {
+      receivedEvents.push(event)
+      validateStoredEvent(event)
+    }
+    function test () {
+      should(receivedEvents.map(({id}) => id)).eql(storedEvents.map(({id}) => id))
+      done()
+    }
+
+    let {subscriber} = getActors()
+    let readCall = subscriber.readStoreStreamForwardFromEvent({
+      fromEventId: from.id
+    })
+    readCall.on('error', noop)
+    readCall.on('data', onEvent)
+    readCall.on('end', test)
+  })
 })
 
 describe('SubscribeToAggregateStream', function () {
