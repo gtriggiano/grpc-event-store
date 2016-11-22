@@ -1,13 +1,15 @@
+# Commands folder
+commands/
+
 # Docker folder
 docker/
 
 # Source folder
 src/
 
-# Tests
+# Tests folders
 tests/
 tests-src/
-runTestsSuite.sh
 
 # Babel
 .babelrc
