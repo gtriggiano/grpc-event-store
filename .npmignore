@@ -1,15 +1,16 @@
-# Internals folder
-internals/
+# Docker folder
+docker/
 
 # Source folder
 src/
 
-# Tests folder
+# Tests
 tests/
+tests-src/
+runTestsSuite.sh
 
 # Babel
 .babelrc
 
 # Docker
 docker-compose.yml
-Dockerfile.dev
