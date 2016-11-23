@@ -14,10 +14,10 @@ service EventStore {
   /////////////////////////////////
 
   // Returns a live stream of events emitted as soon as they are stored.
-  rpc SubscribeToStoreStream (EmptyDTO) returns (stream StoredEvent);
+  rpc SubscribeToStoreStream (stream EmptyDTO) returns (stream StoredEvent);
   // Returns a live stream of all the events stored after a certain one.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc SubscribeToStoreStreamFromEvent (BoundedStoreStreamRequest) returns (stream StoredEvent);
+  rpc SubscribeToStoreStreamFromEvent (stream BoundedStoreStreamRequest) returns (stream StoredEvent);
   // Returns an ending stream of events stored after a certain one, up to the moment of request.
   // Clients can specify a `limit` to receive just N events.
   rpc ReadStoreStreamForwardFromEvent (BoundedStoreStreamRequest) returns (stream StoredEvent);
@@ -28,10 +28,10 @@ service EventStore {
   /////////////////////////////
 
   // Returns a live stream of events belonging to an aggregate stream, emitted as soon as they are stored.
-  rpc SubscribeToAggregateStream (AggregateIdentity) returns (stream StoredEvent);
+  rpc SubscribeToAggregateStream (stream AggregateIdentity) returns (stream StoredEvent);
   // Returns a live stream of all events belonging to an aggregate stream and having a version number > than the provided one.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc SubscribeToAggregateStreamFromVersion (BoundedAggregateStreamRequest) returns (stream StoredEvent);
+  rpc SubscribeToAggregateStreamFromVersion (stream BoundedAggregateStreamRequest) returns (stream StoredEvent);
   // Returns an ending stream of all the events belonging to an aggregate, having a version number > than the provided one and stored before the time of request.
   // Clients can specify a `limit` to receive just N events.
   rpc ReadAggregateStreamForwardFromVersion (BoundedAggregateStreamRequest) returns (stream StoredEvent);
@@ -45,10 +45,10 @@ service EventStore {
   ////////////////////////////////
 
   // Returns a live stream of events belonging to the streams of aggregates of given types, emitted as soon as they are stored.
-  rpc SubscribeToAggregateTypesStream (AggregateTypesStreamRequest) returns (stream StoredEvent);
+  rpc SubscribeToAggregateTypesStream (stream AggregateTypesStreamRequest) returns (stream StoredEvent);
   // Returns a live stream of events belonging to the streams of aggregates of given types and stored after a given event.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc SubscribeToAggregateTypesStreamFromEvent (BoundedAggregateTypesStreamRequest) returns (stream StoredEvent);
+  rpc SubscribeToAggregateTypesStreamFromEvent (stream BoundedAggregateTypesStreamRequest) returns (stream StoredEvent);
   // Returns an ending stream of the events belonging to the streams of aggregates of given types, stored after a given event and before the time of request.
   // Clients can specify a `limit` to receive just N events.
   rpc ReadAggregateTypesStreamForwardFromEvent (BoundedAggregateTypesStreamRequest) returns (stream StoredEvent);
@@ -59,10 +59,10 @@ service EventStore {
   ////////////////////////////
 
   // Returns a live stream of events of certain types, emitted as soon as they are stored.
-  rpc SubscribeToEventTypesStream (EventTypesStreamRequest) returns (stream StoredEvent);
+  rpc SubscribeToEventTypesStream (stream EventTypesStreamRequest) returns (stream StoredEvent);
   // Returns a live stream of events of certain types, stored after a given event.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc SubscribeToEventTypesStreamFromEvent (BoundedEventTypesStreamRequest) returns (stream StoredEvent);
+  rpc SubscribeToEventTypesStreamFromEvent (stream BoundedEventTypesStreamRequest) returns (stream StoredEvent);
   // Returns an ending stream of all the events of certain types stored after a given event and before the time of request.
   // Clients can specify a `limit` to receive just N events.
   rpc ReadEventTypesStreamForwardFromEvent (BoundedEventTypesStreamRequest) returns (stream StoredEvent);
