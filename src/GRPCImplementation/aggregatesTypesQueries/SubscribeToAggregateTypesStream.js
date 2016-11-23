@@ -4,22 +4,27 @@ import { isValidString } from '../../utils'
 
 function SubscribeToAggregateTypesStream ({store}) {
   return (call) => {
-    let { aggregateTypes } = call.request
+    let onClientTermination = () => call.end()
+    call.on('end', () => onClientTermination())
 
-    // Validate request
-    if (!aggregateTypes.length) return call.emit('error', new TypeError('aggregateTypes should contain one or more non empty strings'))
-    if (!every(aggregateTypes, isValidString)) return call.emit('error', new TypeError('every item of aggregateTypes should be a non empty string'))
+    call.once('data', (request) => {
+      let { aggregateTypes } = request
 
-    let subscription = store.eventsStream
-      .filter(({aggregateIdentity}) => !!~aggregateTypes.indexOf(aggregateIdentity.type))
-      .subscribe(
-        evt => call.write(evt),
-        err => call.emit('error', err)
-      )
+      // Validate request
+      if (!aggregateTypes.length) return call.emit('error', new TypeError('aggregateTypes should contain one or more non empty strings'))
+      if (!every(aggregateTypes, isValidString)) return call.emit('error', new TypeError('every item of aggregateTypes should be a non empty string'))
 
-    call.on('end', () => {
-      subscription.unsubscribe()
-      call.end()
+      let subscription = store.eventsStream
+        .filter(({aggregateIdentity}) => !!~aggregateTypes.indexOf(aggregateIdentity.type))
+        .subscribe(
+          evt => call.write(evt),
+          err => call.emit('error', err)
+        )
+
+      onClientTermination = () => {
+        subscription.unsubscribe()
+        call.end()
+      }
     })
   }
 }
