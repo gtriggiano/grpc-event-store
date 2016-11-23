@@ -97,7 +97,9 @@
       "after",
       "afterEach",
       "data",
-      "testData"
+      "testData",
+      "InMemorySimulation",
+      "FixtureBusNode"
     ]
   },
   "repository": {

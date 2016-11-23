@@ -39,20 +39,25 @@ function InMemorySimulation (data) {
 
 function FixtureBackend ({aggregates, events, snapshots, store}) {
   function dispatchEvents (results, events) {
-    events.forEach((evt, idx) => process.nextTick(() => {
-      let e = evt.toJS()
-      let evtt = {
-        aggregateIdentity: {
-          id: e.aggregateId,
-          type: e.aggregateType
-        },
-        ...pick(e, ['type', 'sequenceNumber', 'data', 'metadata', 'id', 'storedOn'])
-      }
-      results.emit('event', evtt)
-    }))
-    setTimeout(function () {
-      results.emit('end')
-    }, events.size)
+    setTimeout(() => {
+      events.reduce((p, evt) => {
+        let e = evt.toJS()
+        let evtt = {
+          aggregateIdentity: {
+            id: e.aggregateId,
+            type: e.aggregateType
+          },
+          ...pick(e, ['type', 'sequenceNumber', 'data', 'metadata', 'id', 'storedOn'])
+        }
+        return p.then(() => new Promise((resolve) => {
+          setTimeout(() => {
+            // console.log('stored event', evtt.id)
+            results.emit('event', evtt)
+            resolve()
+          }, 2)
+        }))
+      }, Promise.resolve()).then(() => results.emit('end'))
+    }, 100)
   }
   function dispatchSnapshot (results, snapshot) {
     if (snapshot) {
@@ -163,9 +168,16 @@ function FixtureStore () {
     eventsStream: eventsStreamFromBus(messageBus),
     publishEvents: sinon.spy((events) => {
       events = isArray(events) ? events : [events]
-      events.forEach((evt, idx) => setTimeout(() => {
-        messageBus.emit('StoredEvents', JSON.stringify([evt]))
-      }, idx * 5))
+      events.reduce((p, evt) => {
+        let e = evt
+        return p.then(() => new Promise((resolve) => {
+          setTimeout(() => {
+            // console.log('live event', e.id)
+            messageBus.emit('StoredEvents', JSON.stringify([e]))
+            resolve()
+          }, 2)
+        }))
+      }, Promise.resolve())
     })
   }
 }
