@@ -3,7 +3,7 @@ import { random, max } from 'lodash'
 
 import GRPCImplementation from '..'
 
-describe.only('.subscribeToStoreStreamFromEvent(call)', () => {
+describe('.subscribeToStoreStreamFromEvent(call)', () => {
   it('invokes backend.getEvents() with right parameters', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)

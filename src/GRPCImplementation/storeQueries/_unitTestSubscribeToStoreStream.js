@@ -2,7 +2,7 @@ import should from 'should/as-function'
 
 import GRPCImplementation from '..'
 
-describe.only('.subscribeToStoreStream(call)', () => {
+describe('.subscribeToStoreStream(call)', () => {
   it('invokes call.write() for every live event', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
