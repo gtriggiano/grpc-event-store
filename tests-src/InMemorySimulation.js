@@ -54,7 +54,7 @@ function FixtureBackend ({aggregates, events, snapshots, store}) {
             // console.log('stored event', evtt.id)
             results.emit('event', evtt)
             resolve()
-          }, 2)
+          }, 1)
         }))
       }, Promise.resolve()).then(() => results.emit('end'))
     }, 100)
