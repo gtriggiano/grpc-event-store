@@ -99,6 +99,7 @@
       "data",
       "testData",
       "InMemorySimulation",
+      "AGGREGATE_TYPES",
       "FixtureBusNode"
     ]
   },
