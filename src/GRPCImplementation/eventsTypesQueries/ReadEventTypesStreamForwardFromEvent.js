@@ -1,9 +1,11 @@
-import { every, max } from 'lodash'
+import { every, max, noop } from 'lodash'
 
 import { isValidString, eventsStreamFromBackendEmitter } from '../../utils'
 
 function ReadEventTypesStreamForwardFromEvent ({backend}) {
   return (call) => {
+    call.on('error', noop)
+
     let {eventTypes, fromEventId, limit} = call.request
 
     // Validate request
@@ -17,16 +19,11 @@ function ReadEventTypesStreamForwardFromEvent ({backend}) {
 
     let backendResults = backend.getEventsByTypes(params)
     let eventsStream = eventsStreamFromBackendEmitter(backendResults)
-    let subscription = eventsStream.subscribe(
+    eventsStream.subscribe(
       evt => call.write(evt),
       err => call.emit('error', err),
       () => call.end()
     )
-
-    call.on('end', () => {
-      subscription.unsubscribe()
-      call.end()
-    })
   }
 }
 

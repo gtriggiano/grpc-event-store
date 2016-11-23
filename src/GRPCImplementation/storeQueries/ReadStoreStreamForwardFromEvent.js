@@ -1,9 +1,11 @@
-import { max } from 'lodash'
+import { max, noop } from 'lodash'
 
 import { eventsStreamFromBackendEmitter } from '../../utils'
 
 function ReadStoreStreamForwardFromEvent ({backend}) {
   return (call) => {
+    call.on('error', noop)
+
     let {fromEventId, limit} = call.request
 
     fromEventId = max([0, fromEventId])
@@ -13,16 +15,11 @@ function ReadStoreStreamForwardFromEvent ({backend}) {
 
     let backendResults = backend.getEvents(params)
     let eventsStream = eventsStreamFromBackendEmitter(backendResults)
-    let subscription = eventsStream.subscribe(
+    eventsStream.subscribe(
       evt => call.write(evt),
       err => call.emit('error', err),
       () => call.end()
     )
-
-    call.on('end', () => {
-      subscription.unsubscribe()
-      call.end()
-    })
   }
 }
 

@@ -1,39 +1,46 @@
 import should from 'should/as-function'
 import { sample, sampleSize } from 'lodash'
 
-import InMemorySimulation, { EVENT_TYPES } from '../../../tests/InMemorySimulation'
-
 import GRPCImplementation from '..'
 
 describe('.subscribeToEventTypesStream(call)', () => {
-  it('emits `error` on call if call.request.eventTypes is not a valid list of strings', () => {
+  it('emits `error` on call if call.request.eventTypes is not a valid list of strings', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
     // No eventTypes
-    simulation.call.request = {
+    let request = {
       eventTypes: [],
       fromEventId: 0
     }
     implementation.subscribeToEventTypesStream(simulation.call)
-    let emitArgs = simulation.call.emit.firstCall.args
+    simulation.call.emit('data', request)
 
-    should(simulation.call.emit.calledOnce).be.True()
-    should(emitArgs[0]).equal('error')
-    should(emitArgs[1]).be.an.instanceof(Error)
+    process.nextTick(() => {
+      let emitArgs = simulation.call.emit.secondCall.args
 
-    // Bad eventTypes
-    simulation = InMemorySimulation(data)
-    simulation.call.request = {
-      eventTypes: [''],
-      fromEventId: 0
-    }
-    implementation.subscribeToEventTypesStream(simulation.call)
-    emitArgs = simulation.call.emit.firstCall.args
+      should(simulation.call.emit.calledTwice).be.True()
+      should(emitArgs[0]).equal('error')
+      should(emitArgs[1]).be.an.instanceof(Error)
 
-    should(simulation.call.emit.calledOnce).be.True()
-    should(emitArgs[0]).equal('error')
-    should(emitArgs[1]).be.an.instanceof(Error)
+      // Bad eventTypes
+      simulation = InMemorySimulation(data)
+      request = {
+        eventTypes: [''],
+        fromEventId: 0
+      }
+      implementation.subscribeToEventTypesStream(simulation.call)
+      simulation.call.emit('data', request)
+
+      process.nextTick(() => {
+        emitArgs = simulation.call.emit.secondCall.args
+
+        should(simulation.call.emit.calledTwice).be.True()
+        should(emitArgs[0]).equal('error')
+        should(emitArgs[1]).be.an.instanceof(Error)
+        done()
+      })
+    })
   })
   it('invokes call.write() for every live event with type within the given types', (done) => {
     let testEventTypes = sampleSize(EVENT_TYPES.toJS(), 2)
@@ -41,10 +48,9 @@ describe('.subscribeToEventTypesStream(call)', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    simulation.call.request = {
-      eventTypes: testEventTypes
-    }
+    let request = {eventTypes: testEventTypes}
     implementation.subscribeToEventTypesStream(simulation.call)
+    simulation.call.emit('data', request)
     simulation.store.publishEvents([
       {id: 100010, type: sample(testEventTypes)},
       {id: 100011, type: 'other'},
@@ -65,10 +71,9 @@ describe('.subscribeToEventTypesStream(call)', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    simulation.call.request = {
-      eventTypes: testEventTypes
-    }
+    let request = {eventTypes: testEventTypes}
     implementation.subscribeToEventTypesStream(simulation.call)
+    simulation.call.emit('data', request)
     simulation.store.publishEvents([
       {id: 100010, type: sample(testEventTypes)},
       {id: 100011, type: 'other'},
@@ -76,17 +81,22 @@ describe('.subscribeToEventTypesStream(call)', () => {
     ])
 
     setTimeout(() => {
-      simulation.call.emit('end')
       simulation.store.publishEvents([
         {id: 100013, type: sample(testEventTypes)},
         {id: 100014, type: sample(testEventTypes)}
       ])
+    }, 150)
+
+    setTimeout(() => {
+      simulation.call.emit('end')
     }, 200)
 
     setTimeout(() => {
       let calls = simulation.call.write.getCalls()
-      should(calls.length).equal(2)
-      should(calls.map(({args}) => args[0] && args[0].id)).not.containDeepOrdered([100013, 100014])
+      let eventIds = calls.map(({args}) => args[0] && args[0].id)
+      should(eventIds.length).equal(2)
+      should(eventIds).containDeepOrdered([100010, 100012])
+      should(eventIds).not.containDeepOrdered([100013, 100014])
       done()
     }, 350)
   })

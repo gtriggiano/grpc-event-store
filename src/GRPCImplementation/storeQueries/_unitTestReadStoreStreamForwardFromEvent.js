@@ -26,7 +26,7 @@ describe('.readStoreStreamForwardFromEvent(call)', () => {
   })
   it('invokes call.write() for every fetched event, in the right sequence', (done) => {
     let simulation = InMemorySimulation(data)
-    let fromEventId = random(data.events.size)
+    let fromEventId = random(Math.round(data.events.size * 0.8), data.events.size)
     let storedEvents = data.events.filter(evt => evt.get('id') > fromEventId)
     let limit = random(storedEvents.size)
     if (limit) storedEvents = storedEvents.slice(0, limit)
@@ -47,11 +47,11 @@ describe('.readStoreStreamForwardFromEvent(call)', () => {
         storedEvents.toJS().map(({id}) => id)
       )
       done()
-    }, storedEvents.size + 10)
+    }, 110 + storedEvents.size * 5)
   })
   it('invokes call.end() after all the stored events are written', (done) => {
     let simulation = InMemorySimulation(data)
-    let fromEventId = random(data.events.size)
+    let fromEventId = random(Math.round(data.events.size * 0.8), data.events.size)
     let storedEvents = data.events.filter(evt => evt.get('id') > fromEventId)
     let limit = random(storedEvents.size)
     if (limit) storedEvents = storedEvents.slice(0, limit)
@@ -68,29 +68,6 @@ describe('.readStoreStreamForwardFromEvent(call)', () => {
     setTimeout(() => {
       should(simulation.call.end.calledOnce).be.True()
       done()
-    }, storedEvents.size + 10)
-  })
-  it('stops invoking call.write() if client ends subscription', (done) => {
-    let simulation = InMemorySimulation(data)
-    let fromEventId = random(data.events.size)
-    let storedEvents = data.events.filter(evt => evt.get('id') > fromEventId)
-    let limit = random(storedEvents.size)
-    if (limit) storedEvents = storedEvents.slice(0, limit)
-
-    let implementation = GRPCImplementation(simulation)
-
-    simulation.call.request = {
-      fromEventId,
-      limit
-    }
-
-    implementation.readStoreStreamForwardFromEvent(simulation.call)
-    simulation.call.emit('end')
-
-    setTimeout(() => {
-      should(simulation.call.end.calledOnce).be.True()
-      should(simulation.call.write.getCalls().length).equal(0)
-      done()
-    }, storedEvents.size + 10)
+    }, 110 + storedEvents.size * 5)
   })
 })

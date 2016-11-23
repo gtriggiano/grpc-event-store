@@ -1,8 +1,6 @@
 import should from 'should/as-function'
 import shortid from 'shortid'
 
-import InMemorySimulation from '../../../tests/InMemorySimulation'
-
 import GRPCImplementation from '..'
 
 describe('.writeToMultipleAggregateStreams(call, callback)', function () {

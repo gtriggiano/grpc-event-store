@@ -3,7 +3,7 @@ import { random, max, sample, sampleSize } from 'lodash'
 
 import GRPCImplementation from '..'
 
-describe.only('.subscribeToAggregateTypesStreamFromEvent(call)', () => {
+describe('.subscribeToAggregateTypesStreamFromEvent(call)', () => {
   it('emits `error` on call if call.request.aggregateTypes is not a valid list of strings', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
