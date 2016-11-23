@@ -1,8 +1,6 @@
 import should from 'should/as-function'
 import { random } from 'lodash'
 
-import InMemorySimulation from '../../../tests/InMemorySimulation'
-
 import GRPCImplementation from '..'
 
 describe('.getLastAggregateSnapshot(call, callback)', () => {

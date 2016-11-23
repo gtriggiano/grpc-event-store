@@ -1,7 +1,5 @@
 import should from 'should/as-function'
 
-import InMemorySimulation from '../../tests/InMemorySimulation'
-
 import GRPCImplementation from '.'
 
 describe('.ping(_, callback)', () => {

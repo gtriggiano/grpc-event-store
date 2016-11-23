@@ -1,7 +1,5 @@
 import should from 'should/as-function'
 
-import InMemorySimulation from '../../../tests/InMemorySimulation'
-
 import GRPCImplementation from '..'
 
 describe('.subscribeToStoreStream(call)', () => {
@@ -9,8 +7,8 @@ describe('.subscribeToStoreStream(call)', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    simulation.call.request = {}
     implementation.subscribeToStoreStream(simulation.call)
+    simulation.call.emit('data', {})
     simulation.store.publishEvents([
       {id: 100010},
       {id: 100011},
@@ -29,8 +27,8 @@ describe('.subscribeToStoreStream(call)', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    simulation.call.request = {}
     implementation.subscribeToStoreStream(simulation.call)
+    simulation.call.emit('data', {})
     simulation.store.publishEvents([
       {id: 100010},
       {id: 100011},
@@ -38,11 +36,14 @@ describe('.subscribeToStoreStream(call)', () => {
     ])
 
     setTimeout(() => {
-      simulation.call.emit('end')
       simulation.store.publishEvents([
         {id: 100013},
         {id: 100014}
       ])
+    }, 150)
+
+    setTimeout(() => {
+      simulation.call.emit('end')
     }, 200)
 
     setTimeout(() => {
@@ -50,6 +51,6 @@ describe('.subscribeToStoreStream(call)', () => {
       should(calls.length).equal(3)
       should(calls.map(({args}) => args[0] && args[0].id)).not.containDeepOrdered([100013, 100014])
       done()
-    }, 350)
+    }, 250)
   })
 })

@@ -2,8 +2,13 @@ import path from 'path'
 import should from 'should/as-function'
 import EventEmitter from 'eventemitter3'
 
-import { getSimulationData } from './InMemorySimulation'
+import FixtureBusNode from './FixtureBusNode'
+import InMemorySimulation, { getSimulationData, AGGREGATE_TYPES, EVENT_TYPES } from './InMemorySimulation'
 global.data = getSimulationData()
+global.FixtureBusNode = FixtureBusNode
+global.InMemorySimulation = InMemorySimulation
+global.AGGREGATE_TYPES = AGGREGATE_TYPES
+global.EVENT_TYPES = EVENT_TYPES
 
 var codePath = path.resolve(__dirname, '..', process.env.CODE_PATH)
 function pathTo (dest) {

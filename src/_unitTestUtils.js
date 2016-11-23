@@ -5,8 +5,6 @@ import Rx from 'rxjs'
 import EventEmitter from 'eventemitter3'
 import shortid from 'shortid'
 
-import FixtureBusNode from '../tests/FixtureBusNode'
-
 import {
   prefixString,
   timeoutCallback,

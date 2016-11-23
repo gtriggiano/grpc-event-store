@@ -2,22 +2,27 @@ import { isValidString } from '../../utils'
 
 function SubscribeToAggregateStream ({store}) {
   return (call) => {
-    let { id, type } = call.request
+    let onClientTermination = () => call.end()
+    call.on('end', () => onClientTermination())
 
-    // Validate request
-    if (!isValidString(id)) return call.emit('error', new TypeError('id should be a non empty string'))
-    if (!isValidString(type)) return call.emit('error', new TypeError('type should be a non empty string'))
+    call.once('data', (request) => {
+      let { id, type } = request
 
-    let subscription = store.eventsStream
-      .filter(({aggregateIdentity}) => aggregateIdentity.id === id && aggregateIdentity.type === type)
-      .subscribe(
-        evt => call.write(evt),
-        err => call.emit('error', err)
-      )
+      // Validate request
+      if (!isValidString(id)) return call.emit('error', new TypeError('id should be a non empty string'))
+      if (!isValidString(type)) return call.emit('error', new TypeError('type should be a non empty string'))
 
-    call.on('end', () => {
-      subscription.unsubscribe()
-      call.end()
+      let subscription = store.eventsStream
+        .filter(({aggregateIdentity}) => aggregateIdentity.id === id && aggregateIdentity.type === type)
+        .subscribe(
+          evt => call.write(evt),
+          err => call.emit('error', err)
+        )
+
+      onClientTermination = () => {
+        subscription.unsubscribe()
+        call.end()
+      }
     })
   }
 }

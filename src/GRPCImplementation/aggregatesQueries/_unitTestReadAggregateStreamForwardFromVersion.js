@@ -1,8 +1,6 @@
 import should from 'should/as-function'
 import { random, max, pick } from 'lodash'
 
-import InMemorySimulation from '../../../tests/InMemorySimulation'
-
 import GRPCImplementation from '..'
 
 describe('.readAggregateStreamForwardFromVersion(call)', () => {
@@ -73,7 +71,7 @@ describe('.readAggregateStreamForwardFromVersion(call)', () => {
       evt.get('aggregateId') === testAggregate.get('id') &&
       evt.get('aggregateType') === testAggregate.get('type')
     )
-    let minVersion = random(1, storedEvents.size)
+    let minVersion = random(Math.round(storedEvents.size * 0.7) + 1, storedEvents.size)
     storedEvents = storedEvents.filter(evt => evt.get('sequenceNumber') > minVersion)
     let limit = random(storedEvents.size)
     if (limit) storedEvents = storedEvents.slice(0, limit)
@@ -86,7 +84,6 @@ describe('.readAggregateStreamForwardFromVersion(call)', () => {
       fromVersion: minVersion,
       limit
     }
-
     implementation.readAggregateStreamForwardFromVersion(simulation.call)
 
     setTimeout(() => {
@@ -96,7 +93,7 @@ describe('.readAggregateStreamForwardFromVersion(call)', () => {
         storedEvents.toJS().map(({id}) => id)
       )
       done()
-    }, storedEvents.size + 10)
+    }, 100 + storedEvents.size * 5)
   })
   it('invoks call.end() after all the stored events are written', (done) => {
     let testAggregate = data.aggregates.get(random(data.aggregates.size - 1))
@@ -105,7 +102,7 @@ describe('.readAggregateStreamForwardFromVersion(call)', () => {
       evt.get('aggregateId') === testAggregate.get('id') &&
       evt.get('aggregateType') === testAggregate.get('type')
     )
-    let minVersion = random(1, storedEvents.size)
+    let minVersion = random(Math.round(storedEvents.size * 0.7) + 1, storedEvents.size)
     storedEvents = storedEvents.filter(evt => evt.get('sequenceNumber') > minVersion)
 
     let implementation = GRPCImplementation(simulation)
@@ -114,7 +111,6 @@ describe('.readAggregateStreamForwardFromVersion(call)', () => {
       aggregateIdentity: pick(testAggregate.toJS(), ['id', 'type']),
       fromVersion: minVersion
     }
-
     implementation.readAggregateStreamForwardFromVersion(simulation.call)
 
     setTimeout(() => {
@@ -122,30 +118,6 @@ describe('.readAggregateStreamForwardFromVersion(call)', () => {
       should(writeCalls.length).equal(storedEvents.size)
       should(simulation.call.end.calledOnce).be.True()
       done()
-    }, storedEvents.size + 10)
-  })
-  it('stops invoking call.write() if client ends subscription', (done) => {
-    let testAggregate = data.aggregates.get(random(data.aggregates.size - 1))
-    let simulation = InMemorySimulation(data)
-    let storedEvents = data.events.filter(evt =>
-      evt.get('aggregateId') === testAggregate.get('id') &&
-      evt.get('aggregateType') === testAggregate.get('type')
-    )
-
-    let implementation = GRPCImplementation(simulation)
-
-    simulation.call.request = {
-      aggregateIdentity: pick(testAggregate.toJS(), ['id', 'type']),
-      fromVersion: 0
-    }
-
-    implementation.readAggregateStreamForwardFromVersion(simulation.call)
-    simulation.call.emit('end')
-
-    setTimeout(() => {
-      should(simulation.call.end.calledOnce).be.True()
-      should(simulation.call.write.getCalls().length).equal(0)
-      done()
-    }, storedEvents.size + 10)
+    }, 140 + storedEvents.size * 5)
   })
 })

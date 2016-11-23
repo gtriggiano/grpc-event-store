@@ -9,6 +9,7 @@
     "dev:unit:tests": "./commands/dev:unit:tests.sh",
     "dev:cockroach:backend:tests": "./commands/dev:cockroach:backend:tests.sh",
     "dev:integration:tests": "./commands/dev:integration:tests.sh",
+    "transpile": "npm run transpile:package && npm run transpile:tests",
     "transpile:package": "./commands/transpile:package.sh",
     "transpile:tests": "./commands/transpile:tests.sh",
     "unit:tests": "./commands/unit:tests.sh",
@@ -97,7 +98,11 @@
       "after",
       "afterEach",
       "data",
-      "testData"
+      "testData",
+      "InMemorySimulation",
+      "AGGREGATE_TYPES",
+      "EVENT_TYPES",
+      "FixtureBusNode"
     ]
   },
   "repository": {

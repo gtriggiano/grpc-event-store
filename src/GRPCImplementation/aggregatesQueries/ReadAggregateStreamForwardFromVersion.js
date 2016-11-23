@@ -1,9 +1,11 @@
-import { max } from 'lodash'
+import { max, noop } from 'lodash'
 
 import { isValidString, eventsStreamFromBackendEmitter } from '../../utils'
 
 function ReadAggregateStreamForwardFromVersion ({backend}) {
   return (call) => {
+    call.on('error', noop)
+
     let { aggregateIdentity, fromVersion, limit } = call.request
 
     // Validate request
@@ -18,16 +20,11 @@ function ReadAggregateStreamForwardFromVersion ({backend}) {
 
     let backendResults = backend.getEventsByAggregate(params)
     let eventsStream = eventsStreamFromBackendEmitter(backendResults)
-    let subscription = eventsStream.subscribe(
+    eventsStream.subscribe(
       evt => call.write(evt),
       err => call.emit('error', err),
       () => call.end()
     )
-
-    call.on('end', () => {
-      subscription.unsubscribe()
-      call.end()
-    })
   }
 }
 
