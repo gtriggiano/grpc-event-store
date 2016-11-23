@@ -55,19 +55,22 @@ describe('SubscribeToStoreStream', () => {
     this.timeout(0)
     return flushDB().then(() => populateDB())
   })
-  it('provides a continuous stream of events generated after the call', (done) => {
+  it.only('provides a continuous stream of events generated after the call', (done) => {
     let {writer, subscriber} = getActors()
     let receivedEvents = 0
 
-    let readCall = subscriber.subscribeToStoreStream({})
-    readCall.on('error', noop)
+    let readCall = subscriber.subscribeToStoreStream()
+    console.log('write')
+    readCall.write({})
+    readCall.write({})
+    readCall.on('error', (e) => console.log('error', e))
     readCall.on('data', onEvent)
     function onEvent (event) {
       receivedEvents++
       validateStoredEvent(event)
       should(event.type).equal(`Evt${receivedEvents}`)
       if (receivedEvents === 4) {
-        readCall.cancel()
+        readCall.end()
         done()
       }
     }
