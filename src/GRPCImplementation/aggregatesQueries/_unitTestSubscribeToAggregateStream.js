@@ -2,7 +2,7 @@ import should from 'should/as-function'
 
 import GRPCImplementation from '..'
 
-describe.only('.subscribeToAggregateStream(call)', () => {
+describe('.subscribeToAggregateStream(call)', () => {
   it('emits `error` on call if call.request is not a valid aggregateIdentity', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
