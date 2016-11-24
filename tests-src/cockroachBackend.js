@@ -1,6 +1,6 @@
 import path from 'path'
 import pg from 'pg'
-import { random, pick, uniq, min, isInteger } from 'lodash'
+import { random, pick, uniq, min, isString } from 'lodash'
 import shortid from 'shortid'
 import should from 'should/as-function'
 import sinon from 'sinon'
@@ -237,14 +237,16 @@ describe('backend.getEvents({fromEventId[, limit]})', () => {
   it('returned EE emits the events ordered by `id`', function (done) {
     this.timeout(4000)
     let results = backend.getEvents({
-      fromEventId: 0
+      fromEventId: '0'
     })
     let spy = sinon.spy()
     results.on('event', spy)
     results.on('end', () => {
       let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(testData.events.size)
-      should(spyCalls.map(({args}) => args[0].id)).containDeepOrdered(testData.events.toJS().map(({id}) => id))
+      let eventIds = spyCalls.map(({args}) => args[0].id)
+      let testEventsIds = testData.events.toJS().map(({id}) => id)
+      should(eventIds.length).equal(testData.events.size)
+      should(eventIds).containDeepOrdered(testEventsIds)
       done()
     })
   })
@@ -692,7 +694,7 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     ee.on('storedEvents', (events) => {
       should(events.length).equal(2)
 
-      should(isInteger(events[0].id)).be.True()
+      should(isString(events[0].id)).be.True()
       should(events[0].type).equal('TypeOne')
       should(events[0].aggregateIdentity).deepEqual(aggregate1Identity)
       should(events[0].sequenceNumber).equal(aggregate1.get('version') + 1)
@@ -700,7 +702,7 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
       should(events[0].metadata).equal('metadata of first event')
       should(events[0].transactionId).equal(transactionId)
 
-      should(isInteger(events[1].id)).be.True()
+      should(isString(events[1].id)).be.True()
       should(events[1].type).equal('TypeTwo')
       should(events[1].aggregateIdentity).deepEqual(aggregate1Identity)
       should(events[1].sequenceNumber).equal(aggregate1.get('version') + 2)
@@ -867,7 +869,7 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     ee.on('storedEvents', (events) => {
       should(events.length).equal(2)
 
-      should(isInteger(events[0].id)).be.True()
+      should(isString(events[0].id)).be.True()
       should(events[0].type).equal('TypeOne')
       should(events[0].aggregateIdentity).deepEqual(newAggregateIdentity)
       should(events[0].sequenceNumber).equal(1)
@@ -875,7 +877,7 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
       should(events[0].metadata).equal('metadata of first event')
       should(events[0].transactionId).equal(transactionId)
 
-      should(isInteger(events[1].id)).be.True()
+      should(isString(events[1].id)).be.True()
       should(events[1].type).equal('TypeTwo')
       should(events[1].aggregateIdentity).deepEqual(newAggregateIdentity)
       should(events[1].sequenceNumber).equal(2)
@@ -921,7 +923,7 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     ee.on('storedEvents', (events) => {
       should(events.length).equal(2)
 
-      should(isInteger(events[0].id)).be.True()
+      should(isString(events[0].id)).be.True()
       should(events[0].type).equal('TypeOne')
       should(events[0].aggregateIdentity).deepEqual(newAggregateIdentity)
       should(events[0].sequenceNumber).equal(1)
@@ -929,7 +931,7 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
       should(events[0].metadata).equal('metadata of first event')
       should(events[0].transactionId).equal(transactionId)
 
-      should(isInteger(events[1].id)).be.True()
+      should(isString(events[1].id)).be.True()
       should(events[1].type).equal('TypeTwo')
       should(events[1].aggregateIdentity).deepEqual(newAggregateIdentity)
       should(events[1].sequenceNumber).equal(2)
@@ -1015,7 +1017,7 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     ee.on('storedEvents', (events) => {
       should(events.length).equal(2)
 
-      should(isInteger(events[0].id)).be.True()
+      should(isString(events[0].id)).be.True()
       should(events[0].type).equal('TypeOne')
       should(events[0].aggregateIdentity).deepEqual(aggregate1Identity)
       should(events[0].sequenceNumber).equal(aggregate1.get('version') + 1)
@@ -1023,7 +1025,7 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
       should(events[0].metadata).equal('metadata of first event')
       should(events[0].transactionId).equal(transactionId)
 
-      should(isInteger(events[1].id)).be.True()
+      should(isString(events[1].id)).be.True()
       should(events[1].type).equal('TypeTwo')
       should(events[1].aggregateIdentity).deepEqual(aggregate2Identity)
       should(events[1].sequenceNumber).equal(aggregate2.get('version') + 1)

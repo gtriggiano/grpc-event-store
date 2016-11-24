@@ -59,15 +59,16 @@ describe('SubscribeToStoreStream', () => {
     let {writer, subscriber} = getActors()
     let receivedEvents = 0
 
-    let readCall = subscriber.subscribeToStoreStream({})
-    readCall.on('error', noop)
+    let readCall = subscriber.subscribeToStoreStream()
+    readCall.write({})
+    readCall.on('error', (e) => console.log('error', e))
     readCall.on('data', onEvent)
     function onEvent (event) {
       receivedEvents++
       validateStoredEvent(event)
       should(event.type).equal(`Evt${receivedEvents}`)
       if (receivedEvents === 4) {
-        readCall.cancel()
+        readCall.end()
         done()
       }
     }
@@ -147,7 +148,7 @@ describe('ReadStoreStreamForwardFromEvent', function () {
       validateStoredEvent(event)
     }
     function test () {
-      should(receivedEvents.map(({id}) => id)).eql(storedEvents.map(({id}) => id))
+      should(receivedEvents.map(({id}) => id)).eql(storedEvents.map(({id}) => id.toString()))
       done()
     }
 
@@ -323,7 +324,7 @@ function populateDB () {
     }))
 }
 function validateStoredEvent (evt) {
-  should(evt.id).be.a.Number()
+  should(evt.id).be.a.String()
   should(evt.type).be.a.String()
   should(evt.aggregateIdentity).be.an.Object()
   should(evt.aggregateIdentity.type).be.a.String()

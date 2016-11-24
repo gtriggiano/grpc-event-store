@@ -12,7 +12,7 @@ function eventRecordToDTO (record) {
   } = record
 
   return {
-    id: parseInt(id, 10),
+    id,
     type,
     aggregateIdentity: {
       id: aggregateId,
