@@ -15,7 +15,8 @@
     "unit:tests": "./commands/unit:tests.sh",
     "cockroach:backend:tests": "./commands/cockroach:backend:tests.sh",
     "integration:tests": "./commands/integration:tests.sh",
-    "test": "./commands/run:all:tests.sh"
+    "test": "./commands/run:all:tests.sh",
+    "prepublish": "npm test"
   },
   "betterScripts": {
     "unit:tests": {
