@@ -19,5 +19,5 @@ source "${BASH_SOURCE%/*}/unit:tests.sh"
 echo '==================================================='
 source "${BASH_SOURCE%/*}/cockroach:backend:tests.sh"
 echo '==================================================='
-source "${BASH_SOURCE%/*}/integration:tests.sh"
+# source "${BASH_SOURCE%/*}/integration:tests.sh"
 echo '==================================================='
