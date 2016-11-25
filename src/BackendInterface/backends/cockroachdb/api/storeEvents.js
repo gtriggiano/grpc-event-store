@@ -20,11 +20,19 @@ function storeEventsFactory (getConnection) {
       transactionWrapper(
         client,
         (client, done) => {
-          Promise.all(
-            writeRequests.map(request =>
-              writeToAggregateStream(client, request, transactionId)
-            )
-          )
+          Promise.resolve().then(() => {
+            let responses = []
+            return writeRequests.reduce(
+              (previousRequest, req) => {
+                let request = req
+                return previousRequest.then(() =>
+                  writeToAggregateStream(client, request, transactionId)
+                  .then(response => responses.push(response))
+                )
+              },
+              Promise.resolve()
+            ).then(() => responses)
+          })
           .then(responses => {
             let errors = responses
               .filter(response => response instanceof Error)
