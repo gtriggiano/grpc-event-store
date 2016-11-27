@@ -1163,7 +1163,7 @@ function populateDB () {
     // Fill the events table
     .then(client => new Promise((resolve, reject) => {
       let eventsValues = testData.events.toJS().map(
-        ({id, type, aggregateId, aggregateType, storedOn, sequenceNumber, data, metadata, transactionId}) => `(${id}, '${type}', '${aggregateId}', '${aggregateType}', '${storedOn}', ${sequenceNumber}, '${data}', '${metadata}', '${transactionId}')`
+        ({id, type, aggregateId, aggregateType, storedOn, sequenceNumber, data, metadata, transactionId}) => `(${id}, '${aggregateType}', '${aggregateId}', '${type}', ${sequenceNumber}, '${storedOn}', '${data}', '${metadata}', '${transactionId}')`
       ).join(',')
       let eventsInsert = `INSERT INTO eventstore.events VALUES ${eventsValues}`
 

@@ -6,9 +6,9 @@ import toDTO from '../helpers/eventRecordToDTO'
 export default function storeAggregateEvents (client, aggregate, events, transactionId) {
   return new Promise((resolve, reject) => {
     let parametersList = events.map(({type, data, metadata}, idx) => ([
-      type,
-      aggregate.id,
       aggregate.type,
+      aggregate.id,
+      type,
       aggregate.version + idx + 1,
       new Buffer(data, 'utf8'),
       new Buffer(metadata, 'utf8'),
@@ -27,9 +27,9 @@ export default function storeAggregateEvents (client, aggregate, events, transac
     let insertQueryString = `
       INSERT INTO events
         (
-          type,
-          aggregateId,
           aggregateType,
+          aggregateId,
+          type,
           sequenceNumber,
           data,
           metadata,

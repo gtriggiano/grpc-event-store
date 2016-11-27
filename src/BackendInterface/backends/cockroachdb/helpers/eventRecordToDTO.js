@@ -13,11 +13,11 @@ function eventRecordToDTO (record) {
 
   return {
     id,
-    type,
     aggregateIdentity: {
       id: aggregateId,
       type: aggregateType
     },
+    type,
     storedOn: storedOn.toISOString(),
     sequenceNumber: parseInt(sequenceNumber, 10),
     data: data.toString(),
