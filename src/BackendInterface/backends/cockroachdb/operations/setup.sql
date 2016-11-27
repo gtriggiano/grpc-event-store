@@ -9,11 +9,11 @@ CREATE TABLE IF NOT EXISTS aggregates (
 
 CREATE TABLE IF NOT EXISTS events (
   id INT UNIQUE DEFAULT UNIQUE_ROWID(),
-  type STRING(256) NOT NULL,
-  aggregateId STRING(256) NOT NULL,
   aggregateType STRING(256) NOT NULL,
-  storedOn TIMESTAMP NOT NULL DEFAULT NOW(),
+  aggregateId STRING(256) NOT NULL,
+  type STRING(256) NOT NULL,
   sequenceNumber INT NOT NULL CHECK (sequenceNumber >= 0),
+  storedOn TIMESTAMP NOT NULL DEFAULT NOW(),
   data BYTES NOT NULL,
   metadata BYTES NOT NULL,
   transactionId STRING(256) NOT NULL,
