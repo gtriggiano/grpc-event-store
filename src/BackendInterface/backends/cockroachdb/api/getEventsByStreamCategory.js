@@ -2,21 +2,20 @@ import EventEmitter from 'eventemitter3'
 
 import toDTO from '../helpers/eventRecordToDTO'
 
-function getEventsByAggregateFactory (getConnection) {
-  return ({aggregateIdentity, fromVersion, limit}) => {
+function getEventsByStreamCategoryFactory (getConnection) {
+  return ({streamsCategory, fromEventId, limit}) => {
     let queryStr = `SELECT * FROM events
-                    WHERE aggregateId = $1
-                      AND aggregateType = $2
-                      AND sequenceNumber > $3
+                    WHERE id > $1
+                      AND (stream LIKE $2 OR stream = $3)
                     ORDER BY id `
     let queryParams = [
-      aggregateIdentity.id,
-      aggregateIdentity.type,
-      fromVersion
+      fromEventId,
+      `${streamsCategory}-%`,
+      streamsCategory
     ]
 
     if (limit) {
-      queryStr += 'LIMIT $4'
+      queryStr += `LIMIT $4`
       queryParams.push(limit)
     }
 
@@ -44,4 +43,4 @@ function getEventsByAggregateFactory (getConnection) {
   }
 }
 
-export default getEventsByAggregateFactory
+export default getEventsByStreamCategoryFactory

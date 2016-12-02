@@ -1,27 +1,21 @@
 function eventRecordToDTO (record) {
   let {
     id,
+    stream,
     type,
-    aggregateId,
-    aggregateType,
-    storedOn,
-    sequenceNumber,
+    versionNumber,
+    stored,
     data,
-    metadata,
     transactionId
   } = record
 
   return {
     id,
-    aggregateIdentity: {
-      id: aggregateId,
-      type: aggregateType
-    },
+    stream,
     type,
-    storedOn: storedOn.toISOString(),
-    sequenceNumber: parseInt(sequenceNumber, 10),
+    versionNumber: parseInt(versionNumber, 10),
+    stored: stored.toISOString(),
     data: data.toString(),
-    metadata: metadata.toString(),
     transactionId
   }
 }

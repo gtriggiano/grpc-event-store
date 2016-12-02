@@ -1,11 +1,8 @@
-import { flatten, last } from 'lodash'
+import { flatten } from 'lodash'
 import EventEmitter from 'eventemitter3'
 
-import createAggregate from '../operations/createAggregate'
-import createAggregateSnapshot from '../operations/createAggregateSnapshot'
-import getAggregate from '../operations/getAggregate'
-import storeAggregateEvents from '../operations/storeAggregateEvents'
-import updateAggregateVersion from '../operations/updateAggregateVersion'
+import getStreamVersionNumber from '../operations/getStreamVersionNumber'
+import storeStreamEvents from '../operations/storeStreamEvents'
 
 import transactionWrapper from '../helpers/transactionWrapper'
 
@@ -60,62 +57,32 @@ function storeEventsFactory (getConnection) {
 }
 
 function writeToAggregateStream (client, request, transactionId) {
-  let { aggregateIdentity, events, expectedAggregateVersion, snapshot } = request
+  let { stream, expectedVersionNumber, events } = request
 
-  let eMsg = prefixString(`Aggregate [${aggregateIdentity.type}@${aggregateIdentity.id}] `)
+  let eMsg = prefixString(`Stream ${stream} `)
 
-  let consistentVersioningRequired = expectedAggregateVersion > -1
-  let clientWantsToCreateAggregate = expectedAggregateVersion === 0
+  let noConsistencyRequired = expectedVersionNumber === -2
+  let streamShouldJustExist = expectedVersionNumber === -1
 
-  return getAggregate(client, aggregateIdentity)
-    .then(aggregate => {
-      let aggregateExists = !!aggregate
-      if (
-        !consistentVersioningRequired &&
-        aggregateExists
-      ) return aggregate
-      if (
-        !consistentVersioningRequired &&
-        !aggregateExists
-      ) return createAggregate(client, aggregateIdentity)
-      if (
-        clientWantsToCreateAggregate &&
-        aggregateExists
-      ) throw new Error(eMsg('already exists'))
-      if (
-        clientWantsToCreateAggregate &&
-        !aggregateExists
-      ) return createAggregate(client, aggregateIdentity)
+  return getStreamVersionNumber(client, stream)
+    .then(actualVersionNumber => {
+      let streamExists = !!actualVersionNumber
 
-      if (!aggregate) throw new Error(eMsg('does not exists'))
-      if (aggregate.version !== expectedAggregateVersion) throw new Error(eMsg('version mismatch'))
+      if (noConsistencyRequired) return actualVersionNumber
+      if (streamShouldJustExist && !streamExists) throw new Error(eMsg('does not exist'))
 
-      return aggregate
+      if (actualVersionNumber !== expectedVersionNumber) throw new Error(eMsg('version mismatch'))
+
+      return actualVersionNumber
     })
-    .then(aggregate =>
-      storeAggregateEvents(
+    .then(actualVersionNumber =>
+      storeStreamEvents(
         client,
-        aggregate,
+        stream,
+        actualVersionNumber,
         events,
         transactionId
       )
-    )
-    .then(storedEvents =>
-      updateAggregateVersion(
-        client,
-        aggregateIdentity,
-        last(storedEvents).sequenceNumber
-      ).then(() => storedEvents)
-    )
-    .then(storedEvents =>
-      snapshot
-        ? createAggregateSnapshot(
-            client,
-            aggregateIdentity,
-            last(storedEvents).sequenceNumber,
-            snapshot
-          ).then(() => storedEvents)
-        : storedEvents
     )
     .catch(error => error)
 }

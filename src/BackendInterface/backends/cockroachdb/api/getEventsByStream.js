@@ -2,21 +2,20 @@ import EventEmitter from 'eventemitter3'
 
 import toDTO from '../helpers/eventRecordToDTO'
 
-function getEventsByTypesFactory (getConnection) {
-  return ({eventTypes, fromEventId, limit}) => {
-    let typesPlaceholders = eventTypes.map((_, i) => `$${i + 2}`).join(', ')
-
+function getEventsByStreamFactory (getConnection) {
+  return ({stream, fromVersionNumber, limit}) => {
     let queryStr = `SELECT * FROM events
-                    WHERE id > $1
-                      AND type IN (${typesPlaceholders})
+                    WHERE stream = $1
+                      AND versionNumber > $2
                     ORDER BY id `
+
     let queryParams = [
-      fromEventId,
-      ...eventTypes
+      stream,
+      fromVersionNumber
     ]
 
     if (limit) {
-      queryStr += `LIMIT $${eventTypes.length + 2}`
+      queryStr += 'LIMIT $3'
       queryParams.push(limit)
     }
 
@@ -44,4 +43,4 @@ function getEventsByTypesFactory (getConnection) {
   }
 }
 
-export default getEventsByTypesFactory
+export default getEventsByStreamFactory
