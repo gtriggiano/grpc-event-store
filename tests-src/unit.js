@@ -3,11 +3,11 @@ import should from 'should/as-function'
 import EventEmitter from 'eventemitter3'
 
 import FixtureBusNode from './FixtureBusNode'
-import InMemorySimulation, { getSimulationData, AGGREGATE_TYPES, EVENT_TYPES } from './InMemorySimulation'
+import InMemorySimulation, { getSimulationData, STREAMS_CATEGORIES, EVENT_TYPES } from './InMemorySimulation'
 global.data = getSimulationData()
 global.FixtureBusNode = FixtureBusNode
 global.InMemorySimulation = InMemorySimulation
-global.AGGREGATE_TYPES = AGGREGATE_TYPES
+global.STREAMS_CATEGORIES = STREAMS_CATEGORIES
 global.EVENT_TYPES = EVENT_TYPES
 
 var codePath = path.resolve(__dirname, '..', process.env.CODE_PATH)

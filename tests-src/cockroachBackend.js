@@ -1,19 +1,14 @@
 import path from 'path'
 import pg from 'pg'
-import { random, pick, uniq, min, isString } from 'lodash'
+import { random, min, isString } from 'lodash'
 import shortid from 'shortid'
 import should from 'should/as-function'
 import sinon from 'sinon'
-import Immutable from 'immutable'
 import EventEmitter from 'eventemitter3'
 
 // Load test data in memory
-let data = require('./testData.json')
-global.testData = {
-  aggregates: Immutable.fromJS(data.aggregates),
-  events: Immutable.fromJS(data.events),
-  snapshots: Immutable.fromJS(data.snapshots)
-}
+import { getSimulationData } from './InMemorySimulation'
+global.testData = getSimulationData()
 
 var codePath = path.resolve(__dirname, '..', process.env.CODE_PATH)
 function pathTo (dest) {
@@ -147,17 +142,11 @@ describe('Cockroach Backend instance', () => {
   it('has method .getEvents()', () => {
     should(backend.getEvents).be.a.Function()
   })
-  it('has method .getEventsByAggregate()', () => {
-    should(backend.getEventsByAggregate).be.a.Function()
+  it('has method .getEventsByStream()', () => {
+    should(backend.getEventsByStream).be.a.Function()
   })
-  it('has method .getEventsByAggregateTypes()', () => {
-    should(backend.getEventsByAggregateTypes).be.a.Function()
-  })
-  it('has method .getEventsByTypes()', () => {
-    should(backend.getEventsByTypes).be.a.Function()
-  })
-  it('has method .getLastSnapshotOfAggregate()', () => {
-    should(backend.getLastSnapshotOfAggregate).be.a.Function()
+  it('has method .getEventsByStreamCategory()', () => {
+    should(backend.getEventsByStreamCategory).be.a.Function()
   })
   it('has method .storeEvents()', () => {
     should(backend.storeEvents).be.a.Function()
@@ -167,7 +156,7 @@ describe('Cockroach Backend instance', () => {
 describe('backend.setup(callback(err))', () => {
   before(() => flushDB())
 
-  it('ensures the aggregates, events and snapshots tables and call callback', (done) => {
+  it('ensures the events table and call callback', (done) => {
     backend.setup((err) => {
       if (err) return done(err)
       getClient().then(client => {
@@ -175,11 +164,7 @@ describe('backend.setup(callback(err))', () => {
           `SHOW TABLES FROM eventstore`,
           (err, result) => {
             if (err) done(err)
-            should(result.rows.map(({Table}) => Table)).containDeep([
-              'aggregates',
-              'events',
-              'snapshots'
-            ])
+            should(result.rows.map(({Table}) => Table)).containDeep(['events'])
             client.end()
             done()
           }
@@ -283,53 +268,49 @@ describe('backend.getEvents({fromEventId[, limit]})', () => {
     })
   })
 })
-describe('backend.getEventsByAggregate({aggregateIdentity, fromVersion[, limit]})', () => {
-  let aggregatesWithManyVersions = testData.aggregates.filter(a => a.get('version') > 10)
-  let testAggregate = aggregatesWithManyVersions.get(random(aggregatesWithManyVersions.size - 1))
-  let testAggregateEvents = testData.events.filter(e =>
-    e.get('aggregateId') === testAggregate.get('id') &&
-    e.get('aggregateType') === testAggregate.get('type')
-  )
-  let testAggregateIdentity = pick(testAggregate.toJS(), ['id', 'type'])
+describe('backend.getEventsByStream({stream, fromVersionNumber[, limit]})', () => {
+  let streamsWithManyVersions = testData.streams.filter(stream => stream.get('version') > 10)
+  let testStream = streamsWithManyVersions.get(random(streamsWithManyVersions.size - 1))
+  let testStreamEvents = testData.events.filter(event => event.get('stream') === testStream.get('id'))
 
   it('returns an Event Emitter', () => {
-    let results = backend.getEventsByAggregate({
-      aggregateIdentity: testAggregateIdentity,
-      fromVersion: 0
+    let results = backend.getEventsByStream({
+      stream: testStream.get('id'),
+      fromVersionNumber: 0
     })
     should(results).be.an.instanceof(EventEmitter)
   })
   it('returned EE emits `event` for each event fetched', (done) => {
-    let results = backend.getEventsByAggregate({
-      aggregateIdentity: testAggregateIdentity,
-      fromVersion: 0
+    let results = backend.getEventsByStream({
+      stream: testStream.get('id'),
+      fromVersionNumber: 0
     })
     let spy = sinon.spy()
     results.on('event', spy)
     results.on('end', () => {
       let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(testAggregateEvents.size)
+      should(spyCalls.length).equal(testStreamEvents.size)
       done()
     })
   })
   it('returned EE emits `end` event when all fetched events have been emitted', (done) => {
-    let results = backend.getEventsByAggregate({
-      aggregateIdentity: testAggregateIdentity,
-      fromVersion: 0
+    let results = backend.getEventsByStream({
+      stream: testStream.get('id'),
+      fromVersionNumber: 0
     })
     let c = 0
     results.on('event', () => {
       c++
     })
     results.on('end', () => {
-      should(c).equal(testAggregateEvents.size)
+      should(c).equal(testStreamEvents.size)
       done()
     })
   })
   it('returned EE emits just `end` if no events are found', (done) => {
-    let results = backend.getEventsByAggregate({
-      aggregateIdentity: testAggregateIdentity,
-      fromVersion: 1000
+    let results = backend.getEventsByStream({
+      stream: testStream.get('id'),
+      fromVersionNumber: testStream.get('version') + 1
     })
     let spy = sinon.spy()
     results.on('event', spy)
@@ -340,23 +321,23 @@ describe('backend.getEventsByAggregate({aggregateIdentity, fromVersion[, limit]}
     })
   })
   it('returned EE emits the events ordered by `id`', (done) => {
-    let results = backend.getEventsByAggregate({
-      aggregateIdentity: testAggregateIdentity,
-      fromVersion: 0
+    let results = backend.getEventsByStream({
+      stream: testStream.get('id'),
+      fromVersionNumber: 0
     })
     let spy = sinon.spy()
     results.on('event', spy)
     results.on('end', () => {
       let spyCalls = spy.getCalls()
-      should(spyCalls.map(({args}) => args[0].id)).containDeepOrdered(testAggregateEvents.toJS().map(({id}) => id))
+      should(spyCalls.map(({args}) => args[0].id)).containDeepOrdered(testStreamEvents.toJS().map(({id}) => id))
       done()
     })
   })
-  it('fetching gets all events with `sequenceNumber` > `fromVersion`', (done) => {
-    let storedEvents = testAggregateEvents.filter(e => e.get('sequenceNumber') > 2)
-    let results = backend.getEventsByAggregate({
-      aggregateIdentity: testAggregateIdentity,
-      fromVersion: 2
+  it('fetching gets all events with `versionNumber` > `fromVersionNumber`', (done) => {
+    let storedEvents = testStreamEvents.filter(e => e.get('versionNumber') > 2)
+    let results = backend.getEventsByStream({
+      stream: testStream.get('id'),
+      fromVersionNumber: 2
     })
     let spy = sinon.spy()
     results.on('event', spy)
@@ -368,11 +349,11 @@ describe('backend.getEventsByAggregate({aggregateIdentity, fromVersion[, limit]}
     })
   })
   it('fetching takes in to account `limit` param if provided', (done) => {
-    let storedEvents = testAggregateEvents.filter(e => e.get('sequenceNumber') > 2)
+    let storedEvents = testStreamEvents.filter(e => e.get('versionNumber') > 2)
     let limit = random(1, storedEvents.size * 2)
-    let results = backend.getEventsByAggregate({
-      aggregateIdentity: testAggregateIdentity,
-      fromVersion: 2,
+    let results = backend.getEventsByStream({
+      stream: testStream.get('id'),
+      fromVersionNumber: 2,
       limit
     })
     let spy = sinon.spy()
@@ -385,27 +366,28 @@ describe('backend.getEventsByAggregate({aggregateIdentity, fromVersion[, limit]}
     })
   })
 })
-describe('backend.getEventsByAggregateTypes({aggregateTypes, fromEventId[, limit]})', () => {
-  let testAggregates = testData.aggregates
-    .sortBy(() => Math.random())
-    .slice(0, 3)
-  let testAggregatesTypes = uniq(testAggregates.map(a => a.get('type')).toJS())
-  let testEvents = testData.events.filter(e => !!~testAggregatesTypes.indexOf(e.get('aggregateType')))
+describe('backend.getEventsByStreamCategory({aggregateTypes, fromEventId[, limit]})', () => {
+  let streamsGroupedByCategory = testData.streams.groupBy(stream => stream.get('category'))
+  let categoryStreams = streamsGroupedByCategory.sortBy(group => -group.size).first()
+  let streamsIds = categoryStreams.map(stream => stream.get('id')).toJS()
+  let testCategory = categoryStreams.first().get('category')
+  let testEvents = testData.events.filter(event => !!~streamsIds.indexOf(event.get('stream')))
 
   it('returns an Event Emitter', () => {
-    let results = backend.getEventsByAggregateTypes({
-      aggregateTypes: testAggregatesTypes,
+    let results = backend.getEventsByStreamCategory({
+      streamsCategory: testCategory,
       fromEventId: 0,
       limit: 1
     })
     should(results).be.an.instanceof(EventEmitter)
   })
   it('returned EE emits `event` for each event fetched', (done) => {
-    let results = backend.getEventsByAggregateTypes({
-      aggregateTypes: testAggregatesTypes,
+    let results = backend.getEventsByStreamCategory({
+      streamsCategory: testCategory,
       fromEventId: 0
     })
     let spy = sinon.spy()
+    results.on('error', done)
     results.on('event', spy)
     results.on('end', () => {
       let spyCalls = spy.getCalls()
@@ -414,8 +396,8 @@ describe('backend.getEventsByAggregateTypes({aggregateTypes, fromEventId[, limit
     })
   })
   it('returned EE emits `end` event when all fetched events have been emitted', (done) => {
-    let results = backend.getEventsByAggregateTypes({
-      aggregateTypes: testAggregatesTypes,
+    let results = backend.getEventsByStreamCategory({
+      streamsCategory: testCategory,
       fromEventId: 0
     })
     let c = 0
@@ -428,9 +410,9 @@ describe('backend.getEventsByAggregateTypes({aggregateTypes, fromEventId[, limit
     })
   })
   it('returned EE emits just `end` if no events are found', (done) => {
-    let results = backend.getEventsByAggregateTypes({
-      aggregateTypes: testAggregatesTypes,
-      fromEventId: 1000000
+    let results = backend.getEventsByStreamCategory({
+      streamsCategory: testCategory,
+      fromEventId: 10000000
     })
     let spy = sinon.spy()
     results.on('event', spy)
@@ -441,8 +423,8 @@ describe('backend.getEventsByAggregateTypes({aggregateTypes, fromEventId[, limit
     })
   })
   it('returned EE emits the events ordered by `id`', (done) => {
-    let results = backend.getEventsByAggregateTypes({
-      aggregateTypes: testAggregatesTypes,
+    let results = backend.getEventsByStreamCategory({
+      streamsCategory: testCategory,
       fromEventId: 0
     })
     let spy = sinon.spy()
@@ -455,8 +437,8 @@ describe('backend.getEventsByAggregateTypes({aggregateTypes, fromEventId[, limit
   })
   it('fetching gets all events with `id` > `fromEventId`', (done) => {
     let storedEvents = testEvents.slice(random(-5, -testEvents.size))
-    let results = backend.getEventsByAggregateTypes({
-      aggregateTypes: testAggregatesTypes,
+    let results = backend.getEventsByStreamCategory({
+      streamsCategory: testCategory,
       fromEventId: storedEvents.get(0).get('id') - 1
     })
     let spy = sinon.spy()
@@ -471,191 +453,29 @@ describe('backend.getEventsByAggregateTypes({aggregateTypes, fromEventId[, limit
   it('fetching takes in to account `limit` param if provided', (done) => {
     let storedEvents = testEvents.slice(random(-5, -testEvents.size))
     let limit = random(1, storedEvents.size * 2)
-    let results = backend.getEventsByAggregateTypes({
-      aggregateTypes: testAggregatesTypes,
+    let results = backend.getEventsByStreamCategory({
+      streamsCategory: testCategory,
       fromEventId: storedEvents.get(0).get('id') - 1,
       limit
     })
     let spy = sinon.spy()
+
+    results.on('error', done)
     results.on('event', spy)
     results.on('end', () => {
       let spyCalls = spy.getCalls()
       should(spyCalls.length).equal(min([limit, storedEvents.size]))
       should(spyCalls.map(({args}) => args[0].id)).containDeepOrdered(storedEvents.slice(0, limit).toJS().map(({id}) => id))
-      done()
-    })
-  })
-})
-describe('backend.getEventsByTypes({eventTypes, fromEventId, limit})', () => {
-  let testEventTypes = uniq(testData.events.slice(0, 4).map(e => e.get('type')).toJS())
-  let testEvents = testData.events.filter(e => !!~testEventTypes.indexOf(e.get('type')))
-
-  it('returns an Event Emitter', () => {
-    let results = backend.getEventsByTypes({
-      eventTypes: testEventTypes,
-      fromEventId: 0,
-      limit: 1
-    })
-    should(results).be.an.instanceof(EventEmitter)
-  })
-  it('returned EE emits `event` for each event fetched', (done) => {
-    let results = backend.getEventsByTypes({
-      eventTypes: testEventTypes,
-      fromEventId: 0
-    })
-    let spy = sinon.spy()
-    results.on('event', spy)
-    results.on('end', () => {
-      let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(testEvents.size)
-      done()
-    })
-  })
-  it('returned EE emits `end` event when all fetched events have been emitted', (done) => {
-    let results = backend.getEventsByTypes({
-      eventTypes: testEventTypes,
-      fromEventId: 0
-    })
-    let c = 0
-    results.on('event', () => {
-      c++
-    })
-    results.on('end', () => {
-      should(c).equal(testEvents.size)
-      done()
-    })
-  })
-  it('returned EE emits just `end` if no events are found', (done) => {
-    let results = backend.getEventsByTypes({
-      eventTypes: testEventTypes,
-      fromEventId: 1000000
-    })
-    let spy = sinon.spy()
-    results.on('event', spy)
-    results.on('end', () => {
-      let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(0)
-      done()
-    })
-  })
-  it('returned EE emits the events ordered by `id`', (done) => {
-    let results = backend.getEventsByTypes({
-      eventTypes: testEventTypes,
-      fromEventId: 0
-    })
-    let spy = sinon.spy()
-    results.on('event', spy)
-    results.on('end', () => {
-      let spyCalls = spy.getCalls()
-      should(spyCalls.map(({args}) => args[0].id)).containDeepOrdered(testEvents.toJS().map(({id}) => id))
-      done()
-    })
-  })
-  it('fetching gets all events with `id` > `fromEventId`', (done) => {
-    let storedEvents = testEvents.slice(random(-5, -testEvents.size))
-    let results = backend.getEventsByTypes({
-      eventTypes: testEventTypes,
-      fromEventId: storedEvents.get(0).get('id') - 1
-    })
-    let spy = sinon.spy()
-    results.on('event', spy)
-    results.on('end', () => {
-      let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(storedEvents.size)
-      should(spyCalls.map(({args}) => args[0].id)).containDeepOrdered(storedEvents.toJS().map(({id}) => id))
-      done()
-    })
-  })
-  it('fetching takes in to account `limit` param if provided', (done) => {
-    let storedEvents = testEvents.slice(random(-5, -testEvents.size))
-    let limit = random(1, storedEvents.size * 2)
-    let results = backend.getEventsByTypes({
-      eventTypes: testEventTypes,
-      fromEventId: storedEvents.get(0).get('id') - 1,
-      limit
-    })
-    let spy = sinon.spy()
-    results.on('event', spy)
-    results.on('end', () => {
-      let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(min([limit, storedEvents.size]))
-      should(spyCalls.map(({args}) => args[0].id)).containDeepOrdered(storedEvents.slice(0, limit).toJS().map(({id}) => id))
-      done()
-    })
-  })
-})
-describe('backend.getLastSnapshotOfAggregate({aggregateIdentity})', () => {
-  let testAggregateIdentity = testData.snapshots
-    .groupBy(s => s.get('aggregateId'))
-    .filter(aggSnapshots => aggSnapshots.size > 1)
-    .toList()
-    .flatten(true)
-    .sortBy(() => Math.random())
-    .takeLast(1)
-    .map(s => ({
-      id: s.get('aggregateId'),
-      type: s.get('aggregateType')
-    }))
-    .get(0)
-
-  let storedAggregateSnapshot = testData.snapshots.filter(s =>
-    s.get('aggregateId') === testAggregateIdentity.id &&
-    s.get('aggregateType') === testAggregateIdentity.type
-  ).sortBy(s => -s.get('version')).get(0)
-  storedAggregateSnapshot = {
-    aggregateIdentity: {
-      id: storedAggregateSnapshot.get('aggregateId'),
-      type: storedAggregateSnapshot.get('aggregateType')
-    },
-    version: storedAggregateSnapshot.get('version'),
-    data: storedAggregateSnapshot.get('data')
-  }
-
-  it('returns an Event Emitter', () => {
-    let results = backend.getLastSnapshotOfAggregate({aggregateIdentity: testAggregateIdentity})
-    should(results).be.an.instanceof(EventEmitter)
-  })
-  it('returned EE emits `snapshot` if a snapshot is found, then `end`', (done) => {
-    let results = backend.getLastSnapshotOfAggregate({aggregateIdentity: testAggregateIdentity})
-    let spy = sinon.spy()
-    results.on('snapshot', spy)
-    results.on('end', () => {
-      let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(1)
-      done()
-    })
-  })
-  it('returned EE emits just `end` if a snapshot is not found', (done) => {
-    let results = backend.getLastSnapshotOfAggregate({aggregateIdentity: {
-      id: 'notexists',
-      type: 'notexists'
-    }})
-    let spy = sinon.spy()
-    results.on('snapshot', spy)
-    results.on('end', () => {
-      let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(0)
-      done()
-    })
-  })
-  it('returned EE emits just the last snapshot of an aggregate', (done) => {
-    let results = backend.getLastSnapshotOfAggregate({aggregateIdentity: testAggregateIdentity})
-    let spy = sinon.spy()
-    results.on('snapshot', spy)
-    results.on('end', () => {
-      let spyCalls = spy.getCalls()
-      should(spyCalls.length).equal(1)
-      should(spyCalls[0].args[0]).deepEqual(storedAggregateSnapshot)
       done()
     })
   })
 })
 describe('backend.storeEvents({writeRequests, transactionId})', () => {
-  let aggregatesRandomized = testData.aggregates.sortBy(() => Math.random())
-  let aggregate1 = aggregatesRandomized.get(0)
-  let aggregate2 = aggregatesRandomized.get(1)
-  let aggregate1Identity = pick(aggregate1.toJS(), ['id', 'type'])
-  let aggregate2Identity = pick(aggregate2.toJS(), ['id', 'type'])
+  let streamsRandomized = testData.streams.sortBy(() => Math.random())
+  let stream1 = streamsRandomized.get(0)
+  let stream1Id = stream1.get('id')
+  let stream2 = streamsRandomized.get(1)
+  let stream2Id = stream2.get('id')
 
   beforeEach(function () {
     this.timeout(0)
@@ -667,9 +487,9 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
   it('returns an Event Emitter', () => {
     let ee = backend.storeEvents({
       writeRequests: [{
-        aggregateIdentity: aggregate1Identity,
-        events: [{type: 'test', data: '', metadata: ''}],
-        expectedAggregateVersion: aggregate1.get('version')
+        stream: stream1Id,
+        events: [{type: 'test', data: ''}],
+        expectedVersionNumber: stream1.get('version')
       }],
       transactionId: shortid()
     })
@@ -680,12 +500,12 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     let ee = backend.storeEvents({
       writeRequests: [
         {
-          aggregateIdentity: aggregate1Identity,
+          stream: stream1Id,
           events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
+            {type: 'TypeOne', data: 'data of first event'},
+            {type: 'TypeTwo', data: 'data of second event'}
           ],
-          expectedAggregateVersion: aggregate1.get('version')
+          expectedVersionNumber: stream1.get('version')
         }
       ],
       transactionId
@@ -696,18 +516,16 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
 
       should(isString(events[0].id)).be.True()
       should(events[0].type).equal('TypeOne')
-      should(events[0].aggregateIdentity).deepEqual(aggregate1Identity)
-      should(events[0].sequenceNumber).equal(aggregate1.get('version') + 1)
+      should(events[0].stream).equal(stream1Id)
+      should(events[0].versionNumber).equal(stream1.get('version') + 1)
       should(events[0].data).equal('data of first event')
-      should(events[0].metadata).equal('metadata of first event')
       should(events[0].transactionId).equal(transactionId)
 
       should(isString(events[1].id)).be.True()
       should(events[1].type).equal('TypeTwo')
-      should(events[1].aggregateIdentity).deepEqual(aggregate1Identity)
-      should(events[1].sequenceNumber).equal(aggregate1.get('version') + 2)
+      should(events[1].stream).equal(stream1Id)
+      should(events[1].versionNumber).equal(stream1.get('version') + 2)
       should(events[1].data).equal('data of second event')
-      should(events[1].metadata).equal('metadata of second event')
       should(events[1].transactionId).equal(transactionId)
 
       done()
@@ -718,12 +536,12 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     let ee = backend.storeEvents({
       writeRequests: [
         {
-          aggregateIdentity: aggregate1Identity,
+          stream: stream1Id,
           events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
+            {type: 'TypeOne', data: 'data of first event'},
+            {type: 'TypeTwo', data: 'data of second event'}
           ],
-          expectedAggregateVersion: aggregate1.get('version') + 1
+          expectedVersionNumber: stream1.get('version') - 1
         }
       ],
       transactionId
@@ -734,281 +552,96 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     })
     ee.on('storedEvents', () => done(new Error('should not emit `storedEvents`, but `error`')))
   })
-  it('returned EE emits `error` if expectedAggregateVersion === 0 and the aggregate already exists', (done) => {
+  it('returned EE emits `error` if expectedVersionNumber === -1 ad the stream does not exists', (done) => {
     let transactionId = shortid()
     let ee = backend.storeEvents({
       writeRequests: [
         {
-          aggregateIdentity: aggregate1Identity,
+          stream: 'Not_Exists',
           events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
+            {type: 'TypeOne', data: 'data of first event'},
+            {type: 'TypeTwo', data: 'data of second event'}
           ],
-          expectedAggregateVersion: 0
+          expectedVersionNumber: -1
         }
       ],
       transactionId
     })
     ee.on('error', err => {
-      should(err.message.match(/already\ exists/).length).equal(1)
+      should(err.message.match(/does\ not\ exist/).length).equal(1)
       done()
     })
     ee.on('storedEvents', () => done(new Error('should not emit `storedEvents`, but `error`')))
   })
-  it('returned EE emits `error` if expectedAggregateVersion > 0 ad the aggregate does not exists', (done) => {
+  it('creates new streams if writing to not existent streams with expectedVersionNumber === -2', (done) => {
     let transactionId = shortid()
     let ee = backend.storeEvents({
       writeRequests: [
         {
-          aggregateIdentity: {type: 'Not', id: 'Exists'},
+          stream: 'New_Stream',
           events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
+            {type: 'TypeOne', data: 'data of first event'},
+            {type: 'TypeTwo', data: 'data of second event'}
           ],
-          expectedAggregateVersion: 1
-        }
-      ],
-      transactionId
-    })
-    ee.on('error', err => {
-      should(err.message.match(/does\ not\ exists/).length).equal(1)
-      done()
-    })
-    ee.on('storedEvents', () => done(new Error('should not emit `storedEvents`, but `error`')))
-  })
-  it('updates the aggregate\'s version in the `aggregates` table', (done) => {
-    let transactionId = shortid()
-    let ee = backend.storeEvents({
-      writeRequests: [
-        {
-          aggregateIdentity: aggregate1Identity,
-          events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
-          ],
-          expectedAggregateVersion: aggregate1.get('version')
+          expectedVersionNumber: -2
         }
       ],
       transactionId
     })
     ee.on('error', err => done(err))
     ee.on('storedEvents', (events) => {
+      should(events.length).equal(2)
+
+      should(isString(events[0].id)).be.True()
+      should(events[0].type).equal('TypeOne')
+      should(events[0].stream).equal('New_Stream')
+      should(events[0].versionNumber).equal(1)
+      should(events[0].data).equal('data of first event')
+      should(events[0].transactionId).equal(transactionId)
+
+      should(isString(events[1].id)).be.True()
+      should(events[1].type).equal('TypeTwo')
+      should(events[1].stream).equal('New_Stream')
+      should(events[1].versionNumber).equal(2)
+      should(events[1].data).equal('data of second event')
+      should(events[1].transactionId).equal(transactionId)
+
       getClient()
       .then(client => {
         client.query(`
-          SELECT * FROM eventstore.aggregates
-          WHERE id = $1
-            AND type = $2`,
-          [aggregate1Identity.id, aggregate1Identity.type],
-          (err, result) => {
-            client.end()
-            if (err) return done(err)
-            should(parseInt(result.rows[0].version, 10)).equal(aggregate1.get('version') + 2)
-            done()
-          }
-        )
-      })
-    })
-  })
-  it('saves an aggregate snapshot if present in a writeRequest', (done) => {
-    let transactionId = shortid()
-    let snapshot = 'aggregate1Identity snapshot'
-    let ee = backend.storeEvents({
-      writeRequests: [
-        {
-          aggregateIdentity: aggregate1Identity,
-          events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
-          ],
-          expectedAggregateVersion: aggregate1.get('version'),
-          snapshot
-        }
-      ],
-      transactionId
-    })
-    ee.on('error', err => done(err))
-    ee.on('storedEvents', (events) => {
-      getClient()
-      .then(client => {
-        client.query(`
-          SELECT * FROM eventstore.snapshots
-          WHERE aggregateId = $1
-            AND aggregateType = $2
-          ORDER BY version DESC
+          SELECT * FROM eventstore.events
+          WHERE stream = $1
+          ORDER BY id DESC
           LIMIT 1`,
-          [aggregate1Identity.id, aggregate1Identity.type],
-          (err, result) => {
-            client.end()
-            if (err) return done(err)
-            should(parseInt(result.rows[0].version, 10)).equal(aggregate1.get('version') + 2)
-            should(result.rows[0].data.toString()).equal(snapshot)
-            done()
-          }
-        )
-      })
-    })
-  })
-  it('creates new aggregates if writing to not existent aggregate\'streams with expectedAggregateVersion < 0', (done) => {
-    let transactionId = shortid()
-    let newAggregateIdentity = {type: 'Not', id: 'Exists'}
-    let ee = backend.storeEvents({
-      writeRequests: [
-        {
-          aggregateIdentity: newAggregateIdentity,
-          events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
-          ],
-          expectedAggregateVersion: -1
-        }
-      ],
-      transactionId
-    })
-    ee.on('error', err => done(err))
-    ee.on('storedEvents', (events) => {
-      should(events.length).equal(2)
-
-      should(isString(events[0].id)).be.True()
-      should(events[0].type).equal('TypeOne')
-      should(events[0].aggregateIdentity).deepEqual(newAggregateIdentity)
-      should(events[0].sequenceNumber).equal(1)
-      should(events[0].data).equal('data of first event')
-      should(events[0].metadata).equal('metadata of first event')
-      should(events[0].transactionId).equal(transactionId)
-
-      should(isString(events[1].id)).be.True()
-      should(events[1].type).equal('TypeTwo')
-      should(events[1].aggregateIdentity).deepEqual(newAggregateIdentity)
-      should(events[1].sequenceNumber).equal(2)
-      should(events[1].data).equal('data of second event')
-      should(events[1].metadata).equal('metadata of second event')
-      should(events[1].transactionId).equal(transactionId)
-
-      getClient()
-      .then(client => {
-        client.query(`
-          SELECT * FROM eventstore.aggregates
-          WHERE id = $1
-            AND type = $2`,
-          [newAggregateIdentity.id, newAggregateIdentity.type],
+          ['New_Stream'],
           (err, result) => {
             client.end()
             if (err) return done(err)
             should(result.rows.length).equal(1)
-            should(parseInt(result.rows[0].version, 10)).equal(2)
+            should(parseInt(result.rows[0].versionNumber, 10)).equal(2)
             done()
           }
         )
       })
     })
   })
-  it('creates new aggregates if writing to not existent aggregate\'streams with expectedAggregateVersion === 0', (done) => {
-    let transactionId = shortid()
-    let newAggregateIdentity = {type: 'Not', id: 'Exists'}
-    let ee = backend.storeEvents({
-      writeRequests: [
-        {
-          aggregateIdentity: newAggregateIdentity,
-          events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
-          ],
-          expectedAggregateVersion: 0
-        }
-      ],
-      transactionId
-    })
-    ee.on('error', err => done(err))
-    ee.on('storedEvents', (events) => {
-      should(events.length).equal(2)
-
-      should(isString(events[0].id)).be.True()
-      should(events[0].type).equal('TypeOne')
-      should(events[0].aggregateIdentity).deepEqual(newAggregateIdentity)
-      should(events[0].sequenceNumber).equal(1)
-      should(events[0].data).equal('data of first event')
-      should(events[0].metadata).equal('metadata of first event')
-      should(events[0].transactionId).equal(transactionId)
-
-      should(isString(events[1].id)).be.True()
-      should(events[1].type).equal('TypeTwo')
-      should(events[1].aggregateIdentity).deepEqual(newAggregateIdentity)
-      should(events[1].sequenceNumber).equal(2)
-      should(events[1].data).equal('data of second event')
-      should(events[1].metadata).equal('metadata of second event')
-      should(events[1].transactionId).equal(transactionId)
-
-      getClient()
-      .then(client => {
-        client.query(`
-          SELECT * FROM eventstore.aggregates
-          WHERE id = $1
-            AND type = $2`,
-          [newAggregateIdentity.id, newAggregateIdentity.type],
-          (err, result) => {
-            client.end()
-            if (err) return done(err)
-            should(result.rows.length).equal(1)
-            should(parseInt(result.rows[0].version, 10)).equal(2)
-            done()
-          }
-        )
-      })
-    })
-  })
-  it('DOES NOT create new aggregates if writing to not existent aggregate\'streams with expectedAggregateVersion > 0', (done) => {
-    let transactionId = shortid()
-    let newAggregateIdentity = {type: 'Not', id: 'Exists'}
-    let ee = backend.storeEvents({
-      writeRequests: [
-        {
-          aggregateIdentity: newAggregateIdentity,
-          events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
-          ],
-          expectedAggregateVersion: 1
-        }
-      ],
-      transactionId
-    })
-    ee.on('error', () => {
-      getClient()
-      .then(client => {
-        client.query(`
-          SELECT * FROM eventstore.aggregates
-          WHERE id = $1
-            AND type = $2`,
-          [newAggregateIdentity.id, newAggregateIdentity.type],
-          (err, result) => {
-            client.end()
-            if (err) return done(err)
-            should(result.rows.length).equal(0)
-            done()
-          }
-        )
-      })
-    })
-    ee.on('storedEvents', () => done(new Error('should not emit `storedEvents`, but `error`')))
-  })
-  it('saves events for multiple aggregate streams whithin the same transaction', (done) => {
+  it('saves events for multiple streams whithin the same transaction', (done) => {
     let transactionId = shortid()
     let ee = backend.storeEvents({
       writeRequests: [
         {
-          aggregateIdentity: aggregate1Identity,
+          stream: stream1Id,
           events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'}
+            {type: 'TypeOne', data: 'data of first event'}
           ],
-          expectedAggregateVersion: aggregate1.get('version')
+          expectedVersionNumber: stream1.get('version')
         },
         {
-          aggregateIdentity: aggregate2Identity,
+          stream: stream2Id,
           events: [
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
+            {type: 'TypeTwo', data: 'data of second event'}
           ],
-          expectedAggregateVersion: aggregate2.get('version')
+          expectedVersionNumber: stream2.get('version')
         }
       ],
       transactionId
@@ -1019,42 +652,40 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
 
       should(isString(events[0].id)).be.True()
       should(events[0].type).equal('TypeOne')
-      should(events[0].aggregateIdentity).deepEqual(aggregate1Identity)
-      should(events[0].sequenceNumber).equal(aggregate1.get('version') + 1)
+      should(events[0].stream).equal(stream1Id)
+      should(events[0].versionNumber).equal(stream1.get('version') + 1)
       should(events[0].data).equal('data of first event')
-      should(events[0].metadata).equal('metadata of first event')
       should(events[0].transactionId).equal(transactionId)
 
       should(isString(events[1].id)).be.True()
       should(events[1].type).equal('TypeTwo')
-      should(events[1].aggregateIdentity).deepEqual(aggregate2Identity)
-      should(events[1].sequenceNumber).equal(aggregate2.get('version') + 1)
+      should(events[1].stream).equal(stream2Id)
+      should(events[1].versionNumber).equal(stream2.get('version') + 1)
       should(events[1].data).equal('data of second event')
-      should(events[1].metadata).equal('metadata of second event')
       should(events[1].transactionId).equal(transactionId)
 
       done()
     })
   })
-  it('DOES NOT write any event if the writing to any aggregate stream fails', (done) => {
+  it('DOES NOT write any event if the writing to any stream fails', (done) => {
     let transactionId = shortid()
     let ee = backend.storeEvents({
       writeRequests: [
         {
-          aggregateIdentity: aggregate1Identity,
+          stream: stream1Id,
           events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
+            {type: 'TypeOne', data: 'data of first event'},
+            {type: 'TypeTwo', data: 'data of second event'}
           ],
-          expectedAggregateVersion: aggregate1.get('version')
+          expectedVersionNumber: stream1.get('version')
         },
         {
-          aggregateIdentity: aggregate2Identity,
+          stream: stream2Id,
           events: [
-            {type: 'TypeOne', data: 'data of first event', metadata: 'metadata of first event'},
-            {type: 'TypeTwo', data: 'data of second event', metadata: 'metadata of second event'}
+            {type: 'TypeOne', data: 'data of first event'},
+            {type: 'TypeTwo', data: 'data of second event'}
           ],
-          expectedAggregateVersion: aggregate2.get('version') + 1
+          expectedVersionNumber: stream2.get('version') - 1
         }
       ],
       transactionId
@@ -1064,15 +695,14 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
       .then(client => {
         client.query(`
           SELECT * FROM eventstore.events
-          WHERE aggregateId = $1
-            AND aggregateType = $2
-          ORDER BY sequenceNumber DESC
+          WHERE stream = $1
+          ORDER BY versionNumber DESC
           LIMIT 1`,
-          [aggregate1Identity.id, aggregate1Identity.type],
+          [stream1Id],
           (err, result) => {
             client.end()
             if (err) return done(err)
-            should(parseInt(result.rows[0].sequenceNumber, 10)).equal(aggregate1.get('version'))
+            should(parseInt(result.rows[0].versionNumber, 10)).equal(stream1.get('version'))
             done()
           }
         )
@@ -1080,34 +710,27 @@ describe('backend.storeEvents({writeRequests, transactionId})', () => {
     })
     ee.on('storedEvents', () => done(new Error('should not emit `storedEvents`, but `error`')))
   })
-  it('writes to aggregate\'streams within a serialized transaction')
 })
 
 describe('Helper eventRecordToDTO(record)', () => {
   it('transforms an events\'table row into a valid DTO representing an event', () => {
-    let storedOn = new Date()
+    let stored = new Date()
     let dbReacord = {
       id: 123,
+      stream: 'StreamX',
       type: 'MyEvent',
-      aggregateId: 456,
-      aggregateType: 'MyAggregate',
-      storedOn,
-      sequenceNumber: 5,
+      stored,
+      versionNumber: 5,
       data: 'myData',
-      metadata: 'myData',
       transactionId: 'abc'
     }
     let expectedDTO = {
       id: 123,
+      stream: 'StreamX',
       type: 'MyEvent',
-      aggregateIdentity: {
-        id: 456,
-        type: 'MyAggregate'
-      },
-      storedOn: storedOn.toISOString(),
-      sequenceNumber: 5,
+      stored: stored.toISOString(),
+      versionNumber: 5,
       data: 'myData',
-      metadata: 'myData',
       transactionId: 'abc'
     }
     should(eventRecordToDTO(dbReacord)).eql(expectedDTO)
@@ -1128,9 +751,7 @@ function flushDB () {
     .then(client => new Promise((resolve, reject) => {
       client.query(`
         CREATE DATABASE IF NOT EXISTS eventstore;
-        DROP TABLE IF EXISTS eventstore.snapshots;
-        DROP TABLE IF EXISTS eventstore.events;
-        DROP TABLE IF EXISTS eventstore.aggregates;`,
+        DROP TABLE IF EXISTS eventstore.events;`,
         (err) => {
           client.end()
           if (err) return reject(err)
@@ -1148,40 +769,17 @@ function setupDB () {
 }
 function populateDB () {
   return getClient()
-    // Fill the aggregates table
-    .then(client => new Promise((resolve, reject) => {
-      let aggregatesValues = testData.aggregates.toJS().map(
-        ({id, type, version}) => `('${id}', '${type}', ${version})`
-      ).join(',')
-      let aggregatesInsert = `INSERT INTO eventstore.aggregates VALUES ${aggregatesValues}`
-
-      client.query(aggregatesInsert, (err) => {
-        if (err) return reject(err)
-        resolve(client)
-      })
-    }))
     // Fill the events table
     .then(client => new Promise((resolve, reject) => {
       let eventsValues = testData.events.toJS().map(
-        ({id, type, aggregateId, aggregateType, storedOn, sequenceNumber, data, metadata, transactionId}) => `(${id}, '${aggregateType}', '${aggregateId}', '${type}', ${sequenceNumber}, '${storedOn}', '${data}', '${metadata}', '${transactionId}')`
+        ({id, stream, type, versionNumber, stored, data, transactionId}) => `(${id}, '${stream}', '${type}', ${versionNumber}, '${stored}', '${data}', '${transactionId}')`
       ).join(',')
+
       let eventsInsert = `INSERT INTO eventstore.events VALUES ${eventsValues}`
 
       client.query(eventsInsert, (err) => {
-        if (err) reject(err)
-        resolve(client)
-      })
-    }))
-    // Fill the snapshot table
-    .then(client => new Promise((resolve, reject) => {
-      let snapshotsValues = testData.snapshots.toJS().map(
-        ({aggregateId, aggregateType, version, data}) => `('${aggregateId}', '${aggregateType}', ${version}, '${data}')`
-      ).join(',')
-      let snapshotsInsert = `INSERT INTO eventstore.snapshots VALUES ${snapshotsValues}`
-
-      client.query(snapshotsInsert, (err) => {
         client.end()
-        if (err) return reject(err)
+        if (err) reject(err)
         resolve()
       })
     }))

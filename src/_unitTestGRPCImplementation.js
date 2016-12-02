@@ -15,33 +15,26 @@ describe('GRPCImplementation({backend, store})', () => {
   require('./GRPCImplementation/_unitTestPing')
   require('./GRPCImplementation/_unitTestGetUid')
 
-  describe('Aggregates Queries', function () {
-    require('./GRPCImplementation/aggregatesQueries/_unitTestGetLastAggregateSnapshot')
-    require('./GRPCImplementation/aggregatesQueries/_unitTestReadAggregateStreamForwardFromVersion')
-    require('./GRPCImplementation/aggregatesQueries/_unitTestSubscribeToAggregateStream')
-    require('./GRPCImplementation/aggregatesQueries/_unitTestSubscribeToAggregateStreamFromVersion')
-  })
-
-  describe('Aggregates Types Queries', function () {
-    require('./GRPCImplementation/aggregatesTypesQueries/_unitTestReadAggregateTypesStreamForwardFromEvent')
-    require('./GRPCImplementation/aggregatesTypesQueries/_unitTestSubscribeToAggregateTypesStream')
-    require('./GRPCImplementation/aggregatesTypesQueries/_unitTestSubscribeToAggregateTypesStreamFromEvent')
-  })
-
-  describe('Events Types Queries', function () {
-    require('./GRPCImplementation/eventsTypesQueries/_unitTestReadEventTypesStreamForwardFromEvent')
-    require('./GRPCImplementation/eventsTypesQueries/_unitTestSubscribeToEventTypesStream')
-    require('./GRPCImplementation/eventsTypesQueries/_unitTestSubscribeToEventTypesStreamFromEvent')
+  describe('Category of streams Queries', function () {
+    require('./GRPCImplementation/categoryOfStreamsQueries/_unitTestCatchUpCategoryOfStreams')
+    require('./GRPCImplementation/categoryOfStreamsQueries/_unitTestReadCategoryOfStreamsForward')
+    require('./GRPCImplementation/categoryOfStreamsQueries/_unitTestSubscribeToCategoryOfStreams')
   })
 
   describe('Store Queries', function () {
-    require('./GRPCImplementation/storeQueries/_unitTestReadStoreStreamForwardFromEvent')
+    require('./GRPCImplementation/storeQueries/_unitTestReadStoreStreamForward')
     require('./GRPCImplementation/storeQueries/_unitTestSubscribeToStoreStream')
-    require('./GRPCImplementation/storeQueries/_unitTestSubscribeToStoreStreamFromEvent')
+    require('./GRPCImplementation/storeQueries/_unitTestCatchUpStoreStream')
+  })
+
+  describe('Stream Queries', function () {
+    require('./GRPCImplementation/streamQueries/_unitTestCatchUpStream')
+    require('./GRPCImplementation/streamQueries/_unitTestReadStreamForward')
+    require('./GRPCImplementation/streamQueries/_unitTestSubscribeToStream')
   })
 
   describe('Write Procedures', function () {
-    require('./GRPCImplementation/writeProcedures/_unitTestWriteToAggregateStream')
-    require('./GRPCImplementation/writeProcedures/_unitTestWriteToMultipleAggregateStreams')
+    require('./GRPCImplementation/writeProcedures/_unitTestWriteToStream')
+    require('./GRPCImplementation/writeProcedures/_unitTestWriteToMultipleStreams')
   })
 })

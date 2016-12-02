@@ -101,7 +101,7 @@
       "data",
       "testData",
       "InMemorySimulation",
-      "AGGREGATE_TYPES",
+      "STREAMS_CATEGORIES",
       "EVENT_TYPES",
       "FixtureBusNode"
     ]
