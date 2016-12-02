@@ -3,7 +3,7 @@ import shortid from 'shortid'
 
 import GRPCImplementation from '..'
 
-describe('.writeToMultipleAggregateStreams(call, callback)', function () {
+describe.only('.writeToMultipleStreams(call, callback)', function () {
   it('invokes callback(error) if !call.request.writeRequests.length', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
@@ -11,163 +11,122 @@ describe('.writeToMultipleAggregateStreams(call, callback)', function () {
     simulation.call.request = {
       writeRequests: []
     }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
 
     let callbackCalls = simulation.callback.getCalls()
     should(callbackCalls.length).equal(1)
     should(callbackCalls[0].args.length).equal(1)
     should(callbackCalls[0].args[0]).be.an.instanceof(Error)
-    should(callbackCalls[0].args[0].message.match(/writingRequests should be a list of event storage requests/).length).equal(1)
+    should(callbackCalls[0].args[0].message.match(/writeRequests should be a list of event storage requests/).length).equal(1)
   })
   it('invokes callback(error) if anyone of call.request.writeRequests is not a valid writeRequest', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    // Missing aggregateIdentity
+    // Missing stream
     simulation.call.request = {
       writeRequests: [
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: '',
           events: [{type: 'Test'}]
         },
         {
+          stream: 'StreamX',
           events: [{type: 'Test'}]
         }
       ]
     }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
     let callbackCalls = simulation.callback.getCalls()
     should(callbackCalls.length).equal(1)
     should(callbackCalls[0].args.length).equal(1)
     should(callbackCalls[0].args[0]).be.instanceof(Error)
-    should(callbackCalls[0].args[0].message.match(/aggregateIdentity cannot be undefined/).length).equal(1)
-
-    // Bad aggregateIdentity.type
-    simulation = InMemorySimulation(data)
-    simulation.call.request = {
-      writeRequests: [
-        {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
-          events: [{type: 'Test'}]
-        },
-        {
-          aggregateIdentity: {id: 'Id', type: ''},
-          events: [{type: 'Test'}]
-        }
-      ]
-    }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
-    callbackCalls = simulation.callback.getCalls()
-    should(callbackCalls.length).equal(1)
-    should(callbackCalls[0].args.length).equal(1)
-    should(callbackCalls[0].args[0]).be.instanceof(Error)
-    should(callbackCalls[0].args[0].message.match(/aggregateIdentity\.type should be a nonempty string/).length).equal(1)
-
-    // Bad aggregateIdentity.id
-    simulation = InMemorySimulation(data)
-    simulation.call.request = {
-      writeRequests: [
-        {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
-          events: [{type: 'Test'}]
-        },
-        {
-          aggregateIdentity: {id: '', type: 'TypeTwo'},
-          events: [{type: 'Test'}]
-        }
-      ]
-    }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
-    callbackCalls = simulation.callback.getCalls()
-    should(callbackCalls.length).equal(1)
-    should(callbackCalls[0].args.length).equal(1)
-    should(callbackCalls[0].args[0]).be.instanceof(Error)
-    should(callbackCalls[0].args[0].message.match(/aggregateIdentity\.id should be a nonempty string/).length).equal(1)
+    should(callbackCalls[0].args[0].message.match(/stream MUST be a nonempty string/).length).equal(1)
 
     // Missing events
     simulation = InMemorySimulation(data)
     simulation.call.request = {
       writeRequests: [
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: 'StreamX',
           events: [{type: 'Test'}]
         },
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeTwo'}
+          stream: 'StreamY'
         }
       ]
     }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
     callbackCalls = simulation.callback.getCalls()
     should(callbackCalls.length).equal(1)
     should(callbackCalls[0].args.length).equal(1)
     should(callbackCalls[0].args[0]).be.instanceof(Error)
-    should(callbackCalls[0].args[0].message.match(/events should be a nonempty list of events to store/).length).equal(1)
+    should(callbackCalls[0].args[0].message.match(/events MUST be a nonempty list of events to store/).length).equal(1)
 
     // Empty events
     simulation = InMemorySimulation(data)
     simulation.call.request = {
       writeRequests: [
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: 'StreamX',
           events: [{type: 'Test'}]
         },
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeTwo'},
+          stream: 'StreamY',
           events: []
         }
       ]
     }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
     callbackCalls = simulation.callback.getCalls()
     should(callbackCalls.length).equal(1)
     should(callbackCalls[0].args.length).equal(1)
     should(callbackCalls[0].args[0]).be.instanceof(Error)
-    should(callbackCalls[0].args[0].message.match(/events should be a nonempty list of events to store/).length).equal(1)
+    should(callbackCalls[0].args[0].message.match(/events MUST be a nonempty list of events to store/).length).equal(1)
 
     // Bad event
     simulation = InMemorySimulation(data)
     simulation.call.request = {
       writeRequests: [
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: 'StreamX',
           events: [{type: 'Test'}]
         },
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeTwo'},
+          stream: 'StreamY',
           events: [{type: 'Test'}, {type: ''}]
         }
       ]
     }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
     callbackCalls = simulation.callback.getCalls()
     should(callbackCalls.length).equal(1)
     should(callbackCalls[0].args.length).equal(1)
     should(callbackCalls[0].args[0]).be.instanceof(Error)
-    should(callbackCalls[0].args[0].message.match(/all events should have a valid type/).length).equal(1)
+    should(callbackCalls[0].args[0].message.match(/all events MUST have a valid type/).length).equal(1)
   })
-  it('invokes callback(error) if each writeRequest does not concern a different aggregate', () => {
+  it('invokes callback(error) if each writeRequest does not concern a different stream', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
     simulation.call.request = {
       writeRequests: [
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: 'StreamX',
           events: [{type: 'Test'}]
         },
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: 'StreamX',
           events: [{type: 'TestTwo'}]
         }
       ]
     }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
     let callbackCalls = simulation.callback.getCalls()
     should(callbackCalls.length).equal(1)
     should(callbackCalls[0].args.length).equal(1)
     should(callbackCalls[0].args[0]).be.instanceof(Error)
-    should(callbackCalls[0].args[0].message.match(/each writeRequest should concern a different aggregate/).length).equal(1)
+    should(callbackCalls[0].args[0].message.match(/each writeRequest should concern a different stream/).length).equal(1)
   })
   it('invokes backend.storeEvents() with right parameters', () => {
     let simulation = InMemorySimulation(data)
@@ -176,31 +135,31 @@ describe('.writeToMultipleAggregateStreams(call, callback)', function () {
     simulation.call.request = {
       writeRequests: [
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: 'StreamX',
           events: [{type: 'Test'}],
-          expectedAggregateVersion: 3
+          expectedVersionNumber: 3
         },
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeTwo'},
+          stream: 'StreamY',
           events: [{type: 'TestTwo', data: 'hello'}],
-          expectedAggregateVersion: -10
+          expectedVersionNumber: -10
         }
       ]
     }
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
     let backendCalls = simulation.backend.storeEvents.getCalls()
     should(backendCalls.length).equal(1)
     should(backendCalls[0].args[0].writeRequests.length).equal(2)
     should(backendCalls[0].args[0].writeRequests).eql([
       {
-        aggregateIdentity: {id: 'Id', type: 'TypeOne'},
-        events: [{type: 'Test', data: '', metadata: ''}],
-        expectedAggregateVersion: 3
+        stream: 'StreamX',
+        events: [{type: 'Test', data: ''}],
+        expectedVersionNumber: 3
       },
       {
-        aggregateIdentity: {id: 'Id', type: 'TypeTwo'},
-        events: [{type: 'TestTwo', data: 'hello', metadata: ''}],
-        expectedAggregateVersion: -1
+        stream: 'StreamY',
+        events: [{type: 'TestTwo', data: 'hello'}],
+        expectedVersionNumber: -2
       }
     ])
     should(backendCalls[0].args[0].transactionId).be.a.String()
@@ -214,19 +173,19 @@ describe('.writeToMultipleAggregateStreams(call, callback)', function () {
     simulation.call.request = {
       writeRequests: [
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: 'StreamX',
           events: [{type: 'Test'}],
-          expectedAggregateVersion: 3
+          expectedVersionNumber: 3
         },
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeTwo'},
-          events: [{type: 'TestTwo', data: 'hello', metadata: errMsg}],
-          expectedAggregateVersion: -10
+          stream: 'StreamY',
+          events: [{type: 'TestTwo', data: errMsg}],
+          expectedVersionNumber: -10
         }
       ]
     }
 
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
     setTimeout(() => {
       let callbackCalls = simulation.callback.getCalls()
       should(callbackCalls.length).equal(1)
@@ -243,19 +202,19 @@ describe('.writeToMultipleAggregateStreams(call, callback)', function () {
     simulation.call.request = {
       writeRequests: [
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeOne'},
+          stream: 'StreamX',
           events: [{type: 'Test'}],
-          expectedAggregateVersion: 3
+          expectedVersionNumber: 3
         },
         {
-          aggregateIdentity: {id: 'Id', type: 'TypeTwo'},
-          events: [{type: 'TestTwo', data: 'hello', metadata: 'world'}],
-          expectedAggregateVersion: -10
+          stream: 'StreamY',
+          events: [{type: 'TestTwo', data: 'hello'}],
+          expectedVersionNumber: -2
         }
       ]
     }
 
-    implementation.writeToMultipleAggregateStreams(simulation.call, simulation.callback)
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
     setTimeout(() => {
       let callbackCalls = simulation.callback.getCalls()
       should(callbackCalls.length).equal(1)
@@ -265,9 +224,8 @@ describe('.writeToMultipleAggregateStreams(call, callback)', function () {
         events: simulation.call.request.writeRequests.reduce((storedEvents, request, rIdx) => {
           return storedEvents.concat(request.events.map((e, eIdx) => ({
             id: `${rIdx}${eIdx}`,
-            aggregateIdentity: request.aggregateIdentity,
+            stream: request.stream,
             data: '',
-            metadata: '',
             ...e
           })))
         }, [])

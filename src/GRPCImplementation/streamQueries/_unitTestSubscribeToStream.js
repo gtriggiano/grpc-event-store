@@ -2,14 +2,14 @@ import should from 'should/as-function'
 
 import GRPCImplementation from '..'
 
-describe('.subscribeToAggregateStream(call)', () => {
-  it('emits `error` on call if call.request is not a valid aggregateIdentity', (done) => {
+describe('.subscribeToStream(call)', () => {
+  it('emits `error` on call if call.request.stream is not a valid string', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    // Bad aggregateIdentity.id
-    let request = {id: '', type: 'test'}
-    implementation.subscribeToAggregateStream(simulation.call)
+    // No stream
+    let request = {stream: ''}
+    implementation.subscribeToStream(simulation.call)
     simulation.call.emit('data', request)
 
     process.nextTick(() => {
@@ -18,35 +18,20 @@ describe('.subscribeToAggregateStream(call)', () => {
       should(simulation.call.emit.calledTwice).be.True()
       should(emitArgs[0]).equal('error')
       should(emitArgs[1]).be.an.instanceof(Error)
-
-      // Bad aggregateIdentity.type
-      simulation = InMemorySimulation(data)
-      request = {id: 'test', type: ''}
-      implementation.subscribeToAggregateStream(simulation.call)
-      simulation.call.emit('data', request)
-
-      process.nextTick(() => {
-        emitArgs = simulation.call.emit.secondCall.args
-
-        should(simulation.call.emit.calledTwice).be.True()
-        should(emitArgs[0]).equal('error')
-        should(emitArgs[1]).be.an.instanceof(Error)
-        done()
-      })
+      done()
     })
   })
-  it('invokes call.write() with every live event about aggregate', (done) => {
-    let aggregateIdentity = {id: 'uid', type: 'Test'}
+  it('invokes call.write() with every live event about stream', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    let request = aggregateIdentity
-    implementation.subscribeToAggregateStream(simulation.call)
+    let request = {stream: 'StreamX'}
+    implementation.subscribeToStream(simulation.call)
     simulation.call.emit('data', request)
     simulation.store.publishEvents([
-      {id: 100010, aggregateIdentity},
-      {id: 100011, aggregateIdentity: {id: 'other', type: 'other'}},
-      {id: 100012, aggregateIdentity}
+      {id: 100010, stream: 'StreamX'},
+      {id: 100011, stream: 'Other'},
+      {id: 100012, stream: 'StreamX'}
     ])
     setTimeout(() => {
       let writeCalls = simulation.call.write.getCalls()
@@ -57,22 +42,21 @@ describe('.subscribeToAggregateStream(call)', () => {
     }, 150)
   })
   it('stops invoking call.write() if client ends subscription', (done) => {
-    let aggregateIdentity = {id: 'uid', type: 'Test'}
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    let request = aggregateIdentity
-    implementation.subscribeToAggregateStream(simulation.call)
+    let request = {stream: 'StreamX'}
+    implementation.subscribeToStream(simulation.call)
     simulation.call.emit('data', request)
     simulation.store.publishEvents([
-      {id: 100010, aggregateIdentity, data: ''},
-      {id: 100011, aggregateIdentity, data: ''}
+      {id: 100010, stream: 'StreamX'},
+      {id: 100011, stream: 'StreamX'}
     ])
 
     setTimeout(() => {
       simulation.store.publishEvents([
-        {id: 100012, aggregateIdentity, data: ''},
-        {id: 100013, aggregateIdentity, data: ''}
+        {id: 100012, stream: 'StreamX'},
+        {id: 100013, stream: 'StreamX'}
       ])
     }, 150)
 

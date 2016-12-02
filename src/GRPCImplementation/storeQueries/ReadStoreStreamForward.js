@@ -2,7 +2,7 @@ import { max, noop } from 'lodash'
 
 import { eventsStreamFromBackendEmitter } from '../../utils'
 
-function ReadStoreStreamForwardFromEvent ({backend}) {
+function ReadStoreStreamForward ({backend}) {
   return (call) => {
     call.on('error', noop)
 
@@ -23,4 +23,4 @@ function ReadStoreStreamForwardFromEvent ({backend}) {
   }
 }
 
-export default ReadStoreStreamForwardFromEvent
+export default ReadStoreStreamForward

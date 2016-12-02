@@ -1,13 +1,13 @@
 import shortid from 'shortid'
 import { uniq } from 'lodash'
 
-import { validateAndGetBackendWriteRequest } from './WriteToAggregateStream'
+import { validateAndGetBackendWriteRequest } from './WriteToStream'
 
-function WriteToMultipleAggregateStream ({backend, store}) {
+function WriteToMultipleStreams ({backend, store}) {
   return (call, callback) => {
     let { writeRequests } = call.request
 
-    if (!writeRequests.length) return callback(new Error('writingRequests should be a list of event storage requests'))
+    if (!writeRequests.length) return callback(new Error('writeRequests should be a list of event storage requests'))
 
     try {
       writeRequests = writeRequests.map(validateAndGetBackendWriteRequest)
@@ -16,8 +16,8 @@ function WriteToMultipleAggregateStream ({backend, store}) {
     }
 
     // Check that there is just one request for every aggregate
-    let involvedAggregates = uniq(writeRequests.map(({aggregateIdentity}) => `${aggregateIdentity.type}${aggregateIdentity.uuid}`))
-    if (involvedAggregates.length < writeRequests.length) return callback(new Error('each writeRequest should concern a different aggregate'))
+    let involvedStreams = uniq(writeRequests.map(({stream}) => stream))
+    if (involvedStreams.length < writeRequests.length) return callback(new Error('each writeRequest should concern a different stream'))
 
     let transactionId = shortid()
 
@@ -35,4 +35,4 @@ function WriteToMultipleAggregateStream ({backend, store}) {
   }
 }
 
-export default WriteToMultipleAggregateStream
+export default WriteToMultipleStreams

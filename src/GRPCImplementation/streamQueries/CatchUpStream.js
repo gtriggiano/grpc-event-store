@@ -1,32 +1,31 @@
 import Rx from 'rxjs'
-
-import { every, max } from 'lodash'
+import { max } from 'lodash'
 
 import { isValidString, eventsStreamFromBackendEmitter } from '../../utils'
 
-function SubscribeToAggregateTypesStreamFromEvent ({backend, store}) {
+function CatchUpStream ({backend, store}) {
   return (call) => {
     let onClientTermination = () => call.end()
     call.on('end', () => onClientTermination())
 
     call.once('data', (request) => {
-      let { aggregateTypes, fromEventId } = request
+      let { stream, fromVersionNumber } = request
 
       // Validate request
-      if (!aggregateTypes.length) return call.emit('error', new TypeError('aggregateTypes should contain one or more non empty strings'))
-      if (!every(aggregateTypes, isValidString)) return call.emit('error', new TypeError('aggregateTypes should be a list of non empty strings'))
-      fromEventId = max([0, fromEventId])
+      if (!isValidString(stream)) return call.emit('error', new TypeError('stream should be a non empty string'))
+
+      fromVersionNumber = max([0, fromVersionNumber])
 
       // Call backend
-      let params = {aggregateTypes, fromEventId}
-      let backendResults = backend.getEventsByAggregateTypes(params)
+      let params = {stream, fromVersionNumber}
+      let backendResults = backend.getEventsByStream(params)
       let backendStream = eventsStreamFromBackendEmitter(backendResults)
 
       // Filter on store.eventsStream
       let liveStream = store.eventsStream
-        .filter(({id, aggregateIdentity}) =>
-          !!~aggregateTypes.indexOf(aggregateIdentity.type) &&
-          id > fromEventId
+        .filter((event) =>
+          event.stream === stream &&
+          event.versionNumber > fromVersionNumber
         )
 
       // Cache live events until backendStream ends
@@ -56,4 +55,4 @@ function SubscribeToAggregateTypesStreamFromEvent ({backend, store}) {
   }
 }
 
-export default SubscribeToAggregateTypesStreamFromEvent
+export default CatchUpStream

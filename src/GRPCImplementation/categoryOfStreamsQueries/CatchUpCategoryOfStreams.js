@@ -1,31 +1,30 @@
 import Rx from 'rxjs'
 
-import { every, max } from 'lodash'
+import { max } from 'lodash'
 
 import { isValidString, eventsStreamFromBackendEmitter } from '../../utils'
 
-function SubscribeToEventTypesStreamFromEvent ({backend, store}) {
+function CatchUpCategoryOfStreams ({backend, store}) {
   return (call) => {
     let onClientTermination = () => call.end()
     call.on('end', () => onClientTermination())
 
     call.once('data', (request) => {
-      let { eventTypes, fromEventId } = request
+      let { streamsCategory, fromEventId } = request
 
       // Validate request
-      if (!eventTypes.length) return call.emit('error', new TypeError('eventTypes should contain one or more non empty strings'))
-      if (!every(eventTypes, isValidString)) return call.emit('error', new TypeError('every item of eventTypes should be a non empty string'))
+      if (!isValidString(streamsCategory)) return call.emit('error', new TypeError('streamsCategory should be a non empty string'))
+
       fromEventId = max([0, fromEventId])
 
       // Call backend
-      let params = {eventTypes, fromEventId}
-      let backendResults = backend.getEventsByTypes(params)
+      let backendResults = backend.getEventsByStreamCategory({streamsCategory, fromEventId})
       let backendStream = eventsStreamFromBackendEmitter(backendResults)
 
       // Filter on store.eventsStream
       let liveStream = store.eventsStream
-        .filter(({id, type}) =>
-          !!~eventTypes.indexOf(type) &&
+        .filter(({id, stream}) =>
+          stream.split('-')[0] === streamsCategory &&
           id > fromEventId
         )
 
@@ -56,4 +55,4 @@ function SubscribeToEventTypesStreamFromEvent ({backend, store}) {
   }
 }
 
-export default SubscribeToEventTypesStreamFromEvent
+export default CatchUpCategoryOfStreams

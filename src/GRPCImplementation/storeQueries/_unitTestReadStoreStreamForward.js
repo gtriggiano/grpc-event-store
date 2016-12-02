@@ -3,7 +3,7 @@ import { random, max } from 'lodash'
 
 import GRPCImplementation from '..'
 
-describe('.readStoreStreamForwardFromEvent(call)', () => {
+describe('.readStoreStreamForward(call)', () => {
   it('invokes backend.getEvents() with right parameters', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
@@ -13,7 +13,7 @@ describe('.readStoreStreamForwardFromEvent(call)', () => {
       limit: random(-10, 10)
     }
 
-    implementation.readStoreStreamForwardFromEvent(simulation.call)
+    implementation.readStoreStreamForward(simulation.call)
 
     let calls = simulation.backend.getEvents.getCalls()
     should(calls.length === 1).be.True()
@@ -25,12 +25,13 @@ describe('.readStoreStreamForwardFromEvent(call)', () => {
     )
   })
   it('invokes call.write() for every fetched event, in the right sequence', (done) => {
-    let simulation = InMemorySimulation(data)
     let fromEventId = random(Math.round(data.events.size * 0.8), data.events.size)
-    let storedEvents = data.events.filter(evt => evt.get('id') > fromEventId)
+    let storedEvents = data.events.filter(event => event.get('id') > fromEventId)
+
     let limit = random(storedEvents.size)
     if (limit) storedEvents = storedEvents.slice(0, limit)
 
+    let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
     simulation.call.request = {
@@ -38,7 +39,7 @@ describe('.readStoreStreamForwardFromEvent(call)', () => {
       limit
     }
 
-    implementation.readStoreStreamForwardFromEvent(simulation.call)
+    implementation.readStoreStreamForward(simulation.call)
 
     setTimeout(() => {
       let writeCalls = simulation.call.write.getCalls()
@@ -50,12 +51,12 @@ describe('.readStoreStreamForwardFromEvent(call)', () => {
     }, 110 + storedEvents.size * 5)
   })
   it('invokes call.end() after all the stored events are written', (done) => {
-    let simulation = InMemorySimulation(data)
     let fromEventId = random(Math.round(data.events.size * 0.8), data.events.size)
-    let storedEvents = data.events.filter(evt => evt.get('id') > fromEventId)
+    let storedEvents = data.events.filter(event => event.get('id') > fromEventId)
     let limit = random(storedEvents.size)
     if (limit) storedEvents = storedEvents.slice(0, limit)
 
+    let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
     simulation.call.request = {
@@ -63,7 +64,7 @@ describe('.readStoreStreamForwardFromEvent(call)', () => {
       limit
     }
 
-    implementation.readStoreStreamForwardFromEvent(simulation.call)
+    implementation.readStoreStreamForward(simulation.call)
 
     setTimeout(() => {
       should(simulation.call.end.calledOnce).be.True()

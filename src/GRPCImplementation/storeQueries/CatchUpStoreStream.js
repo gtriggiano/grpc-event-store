@@ -3,7 +3,7 @@ import { max } from 'lodash'
 
 import { eventsStreamFromBackendEmitter } from '../../utils'
 
-function SubscribeToStoreStreamFromEvent ({backend, store}) {
+function CatchUpStoreStream ({backend, store}) {
   return (call) => {
     let onClientTermination = () => call.end()
     call.on('end', () => onClientTermination())
@@ -45,4 +45,4 @@ function SubscribeToStoreStreamFromEvent ({backend, store}) {
   }
 }
 
-export default SubscribeToStoreStreamFromEvent
+export default CatchUpStoreStream

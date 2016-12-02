@@ -1,21 +1,18 @@
-import { every } from 'lodash'
-
 import { isValidString } from '../../utils'
 
-function SubscribeToEventTypesStream ({store}) {
+function SubscribeToStream ({store}) {
   return (call) => {
     let onClientTermination = () => call.end()
     call.on('end', () => onClientTermination())
 
     call.once('data', (request) => {
-      let { eventTypes } = request
+      let { stream } = request
 
       // Validate request
-      if (!eventTypes.length) return call.emit('error', new TypeError('eventTypes should contain one or more non empty strings'))
-      if (!every(eventTypes, isValidString)) return call.emit('error', new TypeError('every item of eventTypes should be a non empty string'))
+      if (!isValidString(stream)) return call.emit('error', new TypeError('stream should be a non empty string'))
 
       let subscription = store.eventsStream
-        .filter(({type}) => !!~eventTypes.indexOf(type))
+        .filter((event) => event.stream === stream)
         .subscribe(
           evt => call.write(evt),
           err => call.emit('error', err)
@@ -29,4 +26,4 @@ function SubscribeToEventTypesStream ({store}) {
   }
 }
 
-export default SubscribeToEventTypesStream
+export default SubscribeToStream

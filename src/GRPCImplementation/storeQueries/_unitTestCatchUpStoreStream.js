@@ -3,16 +3,15 @@ import { random, max } from 'lodash'
 
 import GRPCImplementation from '..'
 
-describe('.subscribeToStoreStreamFromEvent(call)', () => {
+describe('.catchUpStoreStream(call)', () => {
   it('invokes backend.getEvents() with right parameters', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
     let request = {
-      fromEventId: random(-10, 10),
-      limit: random(-10, 10)
+      fromEventId: random(-10, 10)
     }
-    implementation.subscribeToStoreStreamFromEvent(simulation.call)
+    implementation.catchUpStoreStream(simulation.call)
     simulation.call.emit('data', request)
 
     process.nextTick(() => {
@@ -25,12 +24,12 @@ describe('.subscribeToStoreStreamFromEvent(call)', () => {
   })
   it('invokes call.write() for every fetched and live event, in the right sequence', (done) => {
     let fromEventId = data.events.size - 3
-    let storedEvents = data.events.filter(evt => evt.get('id') > fromEventId)
+    let storedEvents = data.events.filter(event => event.get('id') > fromEventId)
 
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    implementation.subscribeToStoreStreamFromEvent(simulation.call)
+    implementation.catchUpStoreStream(simulation.call)
     simulation.call.emit('data', {fromEventId})
     simulation.store.publishEvents([
       {id: 100010},
@@ -49,12 +48,12 @@ describe('.subscribeToStoreStreamFromEvent(call)', () => {
   })
   it('stops invoking call.write() if client ends subscription', (done) => {
     let fromEventId = data.events.size - 3
-    let storedEvents = data.events.filter(evt => evt.get('id') > fromEventId)
+    let storedEvents = data.events.filter(event => event.get('id') > fromEventId)
 
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    implementation.subscribeToStoreStreamFromEvent(simulation.call)
+    implementation.catchUpStoreStream(simulation.call)
     simulation.call.emit('data', {fromEventId})
 
     simulation.store.publishEvents([

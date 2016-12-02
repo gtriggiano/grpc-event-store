@@ -1,19 +1,18 @@
 import should from 'should/as-function'
-import { sample, sampleSize } from 'lodash'
+import { sample } from 'lodash'
 
 import GRPCImplementation from '..'
 
-describe('.subscribeToEventTypesStream(call)', () => {
-  it('emits `error` on call if call.request.eventTypes is not a valid list of strings', (done) => {
+describe('.subscribeToCategoryOfStreams(call)', () => {
+  it('emits `error` on call if call.request.streamsCategory is not a valid string', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    // No eventTypes
+    // No streamsCategory
     let request = {
-      eventTypes: [],
-      fromEventId: 0
+      streamsCategory: ''
     }
-    implementation.subscribeToEventTypesStream(simulation.call)
+    implementation.subscribeToCategoryOfStreams(simulation.call)
     simulation.call.emit('data', request)
 
     process.nextTick(() => {
@@ -22,39 +21,24 @@ describe('.subscribeToEventTypesStream(call)', () => {
       should(simulation.call.emit.calledTwice).be.True()
       should(emitArgs[0]).equal('error')
       should(emitArgs[1]).be.an.instanceof(Error)
-
-      // Bad eventTypes
-      simulation = InMemorySimulation(data)
-      request = {
-        eventTypes: [''],
-        fromEventId: 0
-      }
-      implementation.subscribeToEventTypesStream(simulation.call)
-      simulation.call.emit('data', request)
-
-      process.nextTick(() => {
-        emitArgs = simulation.call.emit.secondCall.args
-
-        should(simulation.call.emit.calledTwice).be.True()
-        should(emitArgs[0]).equal('error')
-        should(emitArgs[1]).be.an.instanceof(Error)
-        done()
-      })
+      done()
     })
   })
-  it('invokes call.write() for every live event with type within the given types', (done) => {
-    let testEventTypes = sampleSize(EVENT_TYPES.toJS(), 2)
+  it('invokes call.write() for every live event about streams of given category', (done) => {
+    let testCategory = sample(STREAMS_CATEGORIES.toJS())
 
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    let request = {eventTypes: testEventTypes}
-    implementation.subscribeToEventTypesStream(simulation.call)
+    let request = {
+      streamsCategory: testCategory
+    }
+    implementation.subscribeToCategoryOfStreams(simulation.call)
     simulation.call.emit('data', request)
     simulation.store.publishEvents([
-      {id: 100010, type: sample(testEventTypes)},
-      {id: 100011, type: 'other'},
-      {id: 100012, type: sample(testEventTypes)}
+      {id: 100010, stream: `${testCategory}-100`},
+      {id: 100011, stream: 'other'},
+      {id: 100012, stream: `${testCategory}`}
     ])
 
     setTimeout(() => {
@@ -66,24 +50,26 @@ describe('.subscribeToEventTypesStream(call)', () => {
     }, 150)
   })
   it('stops invoking call.write() if client ends subscription', (done) => {
-    let testEventTypes = sampleSize(EVENT_TYPES.toJS(), 2)
+    let testCategory = sample(STREAMS_CATEGORIES.toJS())
 
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 
-    let request = {eventTypes: testEventTypes}
-    implementation.subscribeToEventTypesStream(simulation.call)
+    let request = {
+      streamsCategory: testCategory
+    }
+    implementation.subscribeToCategoryOfStreams(simulation.call)
     simulation.call.emit('data', request)
     simulation.store.publishEvents([
-      {id: 100010, type: sample(testEventTypes)},
-      {id: 100011, type: 'other'},
-      {id: 100012, type: sample(testEventTypes)}
+      {id: 100010, stream: `${testCategory}-100`},
+      {id: 100011, stream: 'other'},
+      {id: 100012, stream: `${testCategory}`}
     ])
 
     setTimeout(() => {
       simulation.store.publishEvents([
-        {id: 100013, type: sample(testEventTypes)},
-        {id: 100014, type: sample(testEventTypes)}
+        {id: 100013, stream: `${testCategory}-100`},
+        {id: 100014, stream: `${testCategory}`}
       ])
     }, 150)
 
@@ -98,6 +84,6 @@ describe('.subscribeToEventTypesStream(call)', () => {
       should(eventIds).containDeepOrdered([100010, 100012])
       should(eventIds).not.containDeepOrdered([100013, 100014])
       done()
-    }, 350)
+    }, 300)
   })
 })
