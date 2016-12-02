@@ -38,32 +38,18 @@ service EventStore {
 
 
 
-  //////////////////////////////////
-  // QUERIES TO A STREAM CATEGORY //
-  //////////////////////////////////
+  ///////////////////////////////////////
+  // QUERIES TO A CATEGORY OF STREAMS  //
+  ///////////////////////////////////////
 
   // Returns a live stream of events belonging to the streams of aggregates of given types, emitted as soon as they are stored.
-  rpc SubscribeToStreamsCategory (stream SubscribeToStreamCategoryRequest) returns (stream StoredEvent);
+  rpc SubscribeToCategoryOfStreams (stream SubscribeToCategoryOfStreamsRequest) returns (stream StoredEvent);
   // Returns a live stream of events belonging to the streams of aggregates of given types and stored after a given event.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc CatchUpStreamsCategory (stream CatchUpStreamsCategoryRequest) returns (stream StoredEvent);
+  rpc CatchUpCategoryOfStreams (stream CatchUpCategoryOfStreamsRequest) returns (stream StoredEvent);
   // Returns an ending stream of the events belonging to the streams of aggregates of given types, stored after a given event and before the time of request.
   // Clients can specify a `limit` to receive just N events.
-  rpc ReadStreamsCategoryForward (ReadStreamsCategoryForwardRequest) returns (stream StoredEvent);
-
-
-  ////////////////////////////
-  // QUERIES BY EVENT TYPES //
-  ////////////////////////////
-
-  // Returns a live stream of events of certain types, emitted as soon as they are stored.
-  rpc SubscribeToEventTypesStream (stream SubscribeToEventTypesStreamRequest) returns (stream StoredEvent);
-  // Returns a live stream of events of certain types, stored after a given event.
-  // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc CatchUpEventTypesStream (stream CatchUpEventTypesStreamRequest) returns (stream StoredEvent);
-  // Returns an ending stream of all the events of certain types stored after a given event and before the time of request.
-  // Clients can specify a `limit` to receive just N events.
-  rpc ReadEventTypesStreamForward (ReadEventTypesStreamForwardRequest) returns (stream StoredEvent);
+  rpc ReadCategoryOfStreamsForward (ReadCategoryOfStreamsForwardRequest) returns (stream StoredEvent);
 
 
   //////////////////////
@@ -111,43 +97,30 @@ message SubscribeToStreamRequest {
 }
 message CatchUpStreamRequest {
   string stream = 1;
-  sint64 fromEventId = 2;
+  sint64 fromVersionNumber = 2;
 }
 message ReadStreamForwardRequest {
   string stream = 1;
-  sint64 fromEventId = 2;
+  sint64 fromVersionNumber = 2;
   int32  limit = 3;
 }
 
-message SubscribeToStreamCategoryRequest {
-  string streamCategory = 1;
+message SubscribeToCategoryOfStreamsRequest {
+  string streamsCategory = 1;
 }
-message CatchUpStreamsCategoryRequest {
-  string streamCategory = 1;
+message CatchUpCategoryOfStreamsRequest {
+  string streamsCategory = 1;
   sint64 fromEventId = 2;
 }
-message ReadStreamsCategoryForwardRequest {
-  string streamCategory = 1;
+message ReadCategoryOfStreamsForwardRequest {
+  string streamsCategory = 1;
   sint64 fromEventId = 2;
   int32  limit = 3;
-}
-
-message SubscribeToEventTypesStreamRequest {
-  repeated string eventTypes = 1;
-}
-message CatchUpEventTypesStream {
-  repeated string eventTypes = 1;
-  sint64 fromEventId = 2;
-}
-message ReadEventTypesStreamForwardRequest {
-  repeated string eventTypes = 1;
-  sint64 fromEventId = 2;
-  int32 limit = 3;
 }
 
 message WriteToStreamRequest {
   string stream = 1;
-  int32 expectedVersion = 2;
+  int32 expectedVersionNumber = 2;
   repeated Event events = 3;
 }
 
