@@ -3,7 +3,7 @@ import shortid from 'shortid'
 
 import GRPCImplementation from '..'
 
-describe.only('.writeToMultipleStreams(call, callback)', function () {
+describe('.writeToMultipleStreams(call, callback)', function () {
   it('invokes callback(error) if !call.request.writeRequests.length', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)

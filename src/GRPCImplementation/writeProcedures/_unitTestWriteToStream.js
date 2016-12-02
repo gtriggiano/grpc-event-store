@@ -3,7 +3,7 @@ import shortid from 'shortid'
 
 import GRPCImplementation from '..'
 
-describe.only('.writeToStream(call, callback)', () => {
+describe('.writeToStream(call, callback)', () => {
   it('invokes callback(error) if call.request.stream is not a valid string', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)

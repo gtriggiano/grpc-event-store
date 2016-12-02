@@ -41,7 +41,7 @@ describe('.catchUpStream(call)', () => {
       done()
     })
   })
-  it('invokes call.write() for every fetched and live event of aggregate, in the right sequence', (done) => {
+  it('invokes call.write() for every fetched and live event of stream, in the right sequence', (done) => {
     let testStream = data.streams.get(random(data.streams.size - 1))
     let testStreamVersion = testStream.get('version')
     let storedEvents = data.events.filter(event => event.get('stream') === testStream.get('id'))
@@ -92,13 +92,13 @@ describe('.catchUpStream(call)', () => {
     simulation.call.emit('data', request)
     simulation.store.publishEvents([
       {id: 100010, stream: testStream.get('id'), versionNumber: ++testStreamVersion},
-      {id: 100011, stream: testStream.get('id'), versionNumber: ++testStreamVersion},
+      {id: 100011, stream: testStream.get('id'), versionNumber: ++testStreamVersion}
     ])
 
     setTimeout(() => {
       simulation.store.publishEvents([
         {id: 100012, stream: testStream.get('id'), versionNumber: ++testStreamVersion},
-        {id: 100013, stream: testStream.get('id'), versionNumber: ++testStreamVersion},
+        {id: 100013, stream: testStream.get('id'), versionNumber: ++testStreamVersion}
       ])
     }, 150)
 
