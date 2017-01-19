@@ -30,6 +30,20 @@ describe('GRPCInterface(settings)', function () {
     should(notThrowing).not.throw()
     should(throwing).throw()
   })
+  it('throws if `settings.writableStreamsPatterns is thruty and is not an array of 0 or more valid strings`', () => {
+    function notThrowing () {
+      GRPCInterface({writableStreamsPatterns: false})
+      GRPCInterface({writableStreamsPatterns: []})
+      GRPCInterface({writableStreamsPatterns: ['a', 'b']})
+    }
+    function throwing () {
+      GRPCInterface({writableStreamsPatterns: true})
+      GRPCInterface({writableStreamsPatterns: {}})
+      GRPCInterface({writableStreamsPatterns: ['a', null, 'b']})
+    }
+    should(notThrowing).not.throw()
+    should(throwing).throw()
+  })
   describe('grpcIface', () => {
     it('is an instance of EventEmitter', () => {
       let grpcIface = GRPCInterface()

@@ -6,7 +6,7 @@ const PROTOCOL_FILE_PATH = path.resolve(__dirname, '..', 'GRPCEventStore.proto')
 export const EventStoreProtocol = grpc.load(PROTOCOL_FILE_PATH).grpceventstore
 
 import GRPCImplementation from './GRPCImplementation'
-import { prefixString, isPositiveInteger } from './utils'
+import { prefixString, isPositiveInteger, isListOfValidStrings } from './utils'
 
 function GRPCInterface (_settings) {
   let settings = {...defaultSettings, ..._settings}
@@ -18,6 +18,7 @@ function GRPCInterface (_settings) {
   let {
     port,
     credentials,
+    writableStreamsPatterns,
     backend,
     store
   } = settings
@@ -27,7 +28,7 @@ function GRPCInterface (_settings) {
   let _connecting = false
   let _disconnecting = false
   let _grpcServer = new grpc.Server()
-  _grpcServer.addProtoService(EventStoreProtocol.EventStore.service, GRPCImplementation({backend, store}))
+  _grpcServer.addProtoService(EventStoreProtocol.EventStore.service, GRPCImplementation({backend, store, writableStreamsPatterns}))
 
   // Public API
   function connect () {
@@ -68,18 +69,21 @@ function GRPCInterface (_settings) {
 
 const defaultSettings = {
   port: 50051,
-  credentials: grpc.ServerCredentials.createInsecure()
+  credentials: grpc.ServerCredentials.createInsecure(),
+  writableStreamsPatterns: false
 }
 
 const iMsg = prefixString('[gRPC EventStore GRPCInterface]: ')
 function _validateSettings (settings) {
   let {
     port,
-    credentials
+    credentials,
+    writableStreamsPatterns
   } = settings
 
   if (!isPositiveInteger(port)) throw new TypeError(iMsg('settings.port should be a positive integer'))
   if (!(credentials instanceof grpc.ServerCredentials)) throw new TypeError(iMsg('settings.credentials should be an instance of grpc.ServerCredentials'))
+  if (writableStreamsPatterns && !isListOfValidStrings(writableStreamsPatterns)) throw new TypeError(iMsg('settings.writableStreamsPatterns must be either false or an array of 0 or more regex expressions'))
 }
 
 export default GRPCInterface
