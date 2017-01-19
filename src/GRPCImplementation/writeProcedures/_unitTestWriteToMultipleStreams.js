@@ -104,6 +104,31 @@ describe('.writeToMultipleStreams(call, callback)', function () {
     should(callbackCalls[0].args.length).equal(1)
     should(callbackCalls[0].args[0]).be.instanceof(Error)
     should(callbackCalls[0].args[0].message.match(/all events MUST have a valid type/).length).equal(1)
+
+    // Not writable stream
+    simulation = InMemorySimulation(data)
+    implementation = GRPCImplementation({
+      ...simulation,
+      writableStreamsPatterns: ['test', 'ssing$', 'Stream$']
+    })
+    simulation.call.request = {
+      writeRequests: [
+        {
+          stream: 'Stream-passing',
+          events: [{type: 'Test'}]
+        },
+        {
+          stream: 'Stream-failing',
+          events: [{type: 'Test'}, {type: ''}]
+        }
+      ]
+    }
+    implementation.writeToMultipleStreams(simulation.call, simulation.callback)
+    callbackCalls = simulation.callback.getCalls()
+    should(callbackCalls.length).equal(1)
+    should(callbackCalls[0].args.length).equal(1)
+    should(callbackCalls[0].args[0]).be.instanceof(Error)
+    should(callbackCalls[0].args[0].message.match(/stream is not writable/).length).equal(1)
   })
   it('invokes callback(error) if each writeRequest does not concern a different stream', () => {
     let simulation = InMemorySimulation(data)
@@ -195,7 +220,7 @@ describe('.writeToMultipleStreams(call, callback)', function () {
       done()
     }, 5)
   })
-  it('invokes callback(null, {events}) if the events writing is succcessful', (done) => {
+  it('invokes callback(null, {events}) if the events writing is successful', (done) => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
 

@@ -2,7 +2,7 @@ import should from 'should/as-function'
 
 import GRPCImplementation from './GRPCImplementation'
 
-describe('GRPCImplementation({backend, store})', () => {
+describe('GRPCImplementation({backend, store, writableStreamsPatterns})', () => {
   it('is a function', () => should(GRPCImplementation).be.a.Function())
   it('returns a map of functions', () => {
     let simulation = InMemorySimulation(data)

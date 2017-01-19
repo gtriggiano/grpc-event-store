@@ -20,30 +20,33 @@ import SubscribeToStream from './streamQueries/SubscribeToStream'
 import WriteToStream from './writeProcedures/WriteToStream'
 import WriteToMultipleStreams from './writeProcedures/WriteToMultipleStreams'
 
-function GRPCImplementationFactory ({backend, store}) {
-  let interfaces = {backend, store}
+function GRPCImplementationFactory ({backend, store, writableStreamsPatterns}) {
+  let writableStreamsRegexList = writableStreamsPatterns
+    ? writableStreamsPatterns.map(str => new RegExp(str))
+    : false
+  let settings = {backend, store, writableStreamsRegexList}
   return {
-    ping: Ping(interfaces),
-    getUid: GetUid(interfaces),
+    ping: Ping(settings),
+    getUid: GetUid(settings),
 
     // Category of streams queries
-    catchUpCategoryOfStreams: CatchUpCategoryOfStreams(interfaces),
-    readCategoryOfStreamsForward: ReadCategoryOfStreamsForward(interfaces),
-    subscribeToCategoryOfStreams: SubscribeToCategoryOfStreams(interfaces),
+    catchUpCategoryOfStreams: CatchUpCategoryOfStreams(settings),
+    readCategoryOfStreamsForward: ReadCategoryOfStreamsForward(settings),
+    subscribeToCategoryOfStreams: SubscribeToCategoryOfStreams(settings),
 
     // Store queries
-    catchUpStoreStream: CatchUpStoreStream(interfaces),
-    readStoreStreamForward: ReadStoreStreamForward(interfaces),
-    subscribeToStoreStream: SubscribeToStoreStream(interfaces),
+    catchUpStoreStream: CatchUpStoreStream(settings),
+    readStoreStreamForward: ReadStoreStreamForward(settings),
+    subscribeToStoreStream: SubscribeToStoreStream(settings),
 
     // Stream queries
-    catchUpStream: CatchUpStream(interfaces),
-    readStreamForward: ReadStreamForward(interfaces),
-    subscribeToStream: SubscribeToStream(interfaces),
+    catchUpStream: CatchUpStream(settings),
+    readStreamForward: ReadStreamForward(settings),
+    subscribeToStream: SubscribeToStream(settings),
 
     // Write Procedures
-    writeToStream: WriteToStream(interfaces),
-    writeToMultipleStreams: WriteToMultipleStreams(interfaces)
+    writeToStream: WriteToStream(settings),
+    writeToMultipleStreams: WriteToMultipleStreams(settings)
   }
 }
 

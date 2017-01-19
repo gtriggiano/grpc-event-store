@@ -20,6 +20,25 @@ describe('.writeToStream(call, callback)', () => {
     should(callbackCalls[0].args[0]).be.instanceof(Error)
     should(callbackCalls[0].args[0].message.match(/stream MUST be a nonempty string/).length).equal(1)
   })
+  it('invokes callback(error) if call.request.stream does not matches any writableStreamsPatterns', () => {
+    let simulation = InMemorySimulation(data)
+    let implementation = GRPCImplementation({
+      ...simulation,
+      writableStreamsPatterns: ['^stream', 'test$']
+    })
+
+    simulation.call.request = {
+      stream: 'test-stream',
+      events: [{type: 'Test'}]
+    }
+
+    implementation.writeToStream(simulation.call, simulation.callback)
+    let callbackCalls = simulation.callback.getCalls()
+    should(callbackCalls.length).equal(1)
+    should(callbackCalls[0].args.length).equal(1)
+    should(callbackCalls[0].args[0]).be.instanceof(Error)
+    should(callbackCalls[0].args[0].message.match(/stream is not writable/).length).equal(1)
+  })
   it('invokes callback(error) if call.request.events is not a nonempty list of valid events to store', () => {
     let simulation = InMemorySimulation(data)
     let implementation = GRPCImplementation(simulation)
@@ -103,6 +122,37 @@ describe('.writeToStream(call, callback)', () => {
     let implementation = GRPCImplementation(simulation)
 
     let stream = 'StreamX'
+    let events = [{type: 'TypeOne', data: 'one'}, {type: 'TypeTwo'}]
+    let expectedStoredEvents = events.map((e, idx) => ({
+      id: `0${idx}`,
+      stream,
+      data: '',
+      ...e
+    }))
+    simulation.call.request = {
+      stream,
+      events,
+      expectedVersionNumber: 0
+    }
+
+    implementation.writeToStream(simulation.call, simulation.callback)
+    setTimeout(() => {
+      let callbackCalls = simulation.callback.getCalls()
+      should(callbackCalls.length).equal(1)
+      should(callbackCalls[0].args.length).equal(2)
+      should(callbackCalls[0].args[0]).be.Null()
+      should(callbackCalls[0].args[1]).eql({events: expectedStoredEvents})
+      done()
+    }, 5)
+  })
+  it('writes to a stream that matches any writableStreamsPatterns', (done) => {
+    let simulation = InMemorySimulation(data)
+    let implementation = GRPCImplementation({
+      ...simulation,
+      writableStreamsPatterns: ['test', 'ssing$', 'S$']
+    })
+
+    let stream = 'Stream-passing'
     let events = [{type: 'TypeOne', data: 'one'}, {type: 'TypeTwo'}]
     let expectedStoredEvents = events.map((e, idx) => ({
       id: `0${idx}`,

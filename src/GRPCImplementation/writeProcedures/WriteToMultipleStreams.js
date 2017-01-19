@@ -3,14 +3,20 @@ import { uniq } from 'lodash'
 
 import { validateAndGetBackendWriteRequest } from './WriteToStream'
 
-function WriteToMultipleStreams ({backend, store}) {
+function WriteToMultipleStreams ({backend, store, writableStreamsRegexList}) {
   return (call, callback) => {
     let { writeRequests } = call.request
 
     if (!writeRequests.length) return callback(new Error('writeRequests should be a list of event storage requests'))
 
     try {
-      writeRequests = writeRequests.map(validateAndGetBackendWriteRequest)
+      writeRequests = writeRequests.map(
+        (request, requestIndex) => validateAndGetBackendWriteRequest({
+          request,
+          requestIndex,
+          writableStreamsRegexList
+        })
+      )
     } catch (e) {
       return callback(e)
     }
