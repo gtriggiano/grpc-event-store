@@ -11,6 +11,8 @@ import {
   isValidString,
   isValidHostname,
   isPositiveInteger,
+  isListOfValidStrings,
+  isWritableStream,
   zeropad,
   eventsStreamFromBus,
   eventsStreamFromBackendEmitter
@@ -103,6 +105,40 @@ describe('Utilities', () => {
       should(isPositiveInteger({})).be.False()
       should(isPositiveInteger([])).be.False()
       should(isPositiveInteger(() => {})).be.False()
+    })
+  })
+  describe('isListOfValidStrings(list)', () => {
+    it('is a function', () => should(isListOfValidStrings).be.a.Function())
+    it('returns true if `list` is an array of 0 or more strings having length > 0, false otherwise', () => {
+      should(isListOfValidStrings([])).be.True()
+      should(isListOfValidStrings(['string'])).be.True()
+      should(isListOfValidStrings('')).be.False()
+      should(isListOfValidStrings({})).be.False()
+      should(isListOfValidStrings([1])).be.False()
+      should(isListOfValidStrings(1)).be.False()
+      should(isListOfValidStrings(() => {})).be.False()
+    })
+  })
+  describe('.isWritableStream(stream, writableStreamsGlobs)', () => {
+    it('is a function', () => should(isWritableStream).be.a.Function())
+    it('returns true if `writableStreamsGlobs` is falsy or an empty array', () => {
+      should(isWritableStream('test', false)).be.True()
+      should(isWritableStream('test', [])).be.True()
+    })
+    it('returns true if any of the passed regex matches `stream`', () => {
+      should(isWritableStream('test-stream', [
+        new RegExp('nomatches'),
+        new RegExp('^test')
+      ])).be.True()
+      should(isWritableStream('test-stream', [
+        new RegExp('am$')
+      ])).be.True()
+    })
+    it('returns false if none of the passed regex matches `stream`', () => {
+      should(isWritableStream('test-stream', [
+        new RegExp('test$'),
+        new RegExp('^stream')
+      ])).be.False()
     })
   })
   describe('zeropad(i, minLength)', () => {

@@ -1,4 +1,4 @@
-import { isString, isInteger, range, curry } from 'lodash'
+import { isString, isInteger, isArray, range, curry, every, some } from 'lodash'
 import Rx from 'rxjs'
 
 let validHostnameRegex = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/
@@ -23,6 +23,17 @@ export let isValidString = (str) => isString(str) && !!str.length
 export let isValidHostname = (str) => isString(str) && validHostnameRegex.test(str)
 
 export let isPositiveInteger = (n) => isInteger(n) && n > 0
+
+export let isListOfValidStrings = (list) => isArray(list) && every(list, isValidString)
+
+export let isWritableStream = (stream, writableStreamsRegexList) => {
+  if (
+    !writableStreamsRegexList ||
+    !writableStreamsRegexList.length
+  ) return true
+
+  return some(writableStreamsRegexList, (regex) => regex.test(stream))
+}
 
 export let zeropad = (i, minLength) => {
   let str = String(i)
