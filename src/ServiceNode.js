@@ -18,7 +18,8 @@ function ServiceNode (_settings) {
     coordinationPort,
     backendSetupTimeout,
     credentials,
-    backend
+    backend,
+    writableStreamsPatterns
   } = settings
 
   // Private API
@@ -31,6 +32,7 @@ function ServiceNode (_settings) {
   let _grpcServer = GRPCInterface({
     backend: _backend,
     store: _store,
+    writableStreamsPatterns,
     ...(port ? {port} : {}),
     ...(credentials ? {credentials} : {})
   })
