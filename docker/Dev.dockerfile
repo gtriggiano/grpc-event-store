@@ -4,6 +4,7 @@ WORKDIR /package
 
 # Install dependencies
 RUN apk add --no-cache \
+      git \
       build-base \
       py-pip \
       libc6-compat
