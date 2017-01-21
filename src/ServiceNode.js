@@ -13,9 +13,7 @@ function ServiceNode (_settings) {
   let node = new EventEmitter()
 
   let {
-    host,
     port,
-    coordinationPort,
     backendSetupTimeout,
     credentials,
     backend,
@@ -28,7 +26,7 @@ function ServiceNode (_settings) {
   let _disconnecting = false
   let _backend = BackendInterface(backend || {})
   let _backendSetupTimeout = timeoutCallback(backendSetupTimeout, iMsg(`Backend setup timeout.`))
-  let _store = StoreInterface({host, coordinationPort})
+  let _store = StoreInterface(settings)
   let _grpcServer = GRPCInterface({
     backend: _backend,
     store: _store,
@@ -79,8 +77,10 @@ function ServiceNode (_settings) {
 }
 
 const defaultSettings = {
-  host: 'localhost',
-  coordinationPort: 50061,
+  busDNS: 'localhost',
+  busExternalNode: false,
+  busCoordinationPort: 50061,
+  busExternalUpdatesPort: 50081,
   backendSetupTimeout: 1000
   /*
   port
