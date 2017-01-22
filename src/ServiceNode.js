@@ -10,6 +10,8 @@ function ServiceNode (_settings) {
   let settings = {...defaultSettings, ..._settings}
   _validateSettings(settings)
 
+  console.log(JSON.stringify(settings, null, 2))
+
   let node = new EventEmitter()
 
   let {
