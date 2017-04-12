@@ -62,6 +62,7 @@ export function validateAndGetDbAppendRequest ({
 
   // Validate request
   if (!isNotEmptyString(stream)) throw new TypeError(prefix('stream MUST be a nonempty string'))
+  // TODO: check that `::` is present 0/1 times in a stream name
   if (!isStreamWritable(stream)) throw new Error(prefix(`stream '${stream}' is not writable`))
   if (!events || !events.length) throw new Error(prefix('events MUST be a nonempty list of events to store'))
   if (!every(events, ({type}) => isNotEmptyString(type))) throw new TypeError(prefix('all events MUST have a valid type'))

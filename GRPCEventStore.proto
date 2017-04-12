@@ -6,7 +6,7 @@ service EventStore {
   // Ping
   rpc Ping (EmptyDTO) returns (EmptyDTO);
 
-  // Get a uuid
+  // Get a unique id
   rpc GetUniqueId (EmptyDTO) returns (UniqueIdResponse);
 
   /////////////////////////////////
@@ -27,12 +27,12 @@ service EventStore {
   // QUERIES TO A STREAM //
   /////////////////////////
 
-  // Returns a live stream of events belonging to an aggregate stream, emitted as soon as they are stored.
+  // Returns a live stream of events belonging to the same... stream, emitted as soon as they are stored.
   rpc SubscribeToStream (stream SubscribeToStreamRequest) returns (stream StoredEvent);
-  // Returns a live stream of all events belonging to an aggregate stream and having a version number > than the provided one.
+  // Returns a live stream of all events belonging to the same stream and having a version number > than the provided one.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
   rpc CatchUpWithStream (stream CatchUpWithStreamRequest) returns (stream StoredEvent);
-  // Returns an ending stream of all the events belonging to an aggregate, having a version number > than the provided one and stored before the time of request.
+  // Returns an ending stream of all the events belonging to the same stream, having a version number > than the provided one and stored before the time of request.
   // Clients can specify a `limit` to receive just N events.
   rpc ReadStreamForward (ReadStreamForwardRequest) returns (stream StoredEvent);
 
@@ -42,12 +42,17 @@ service EventStore {
   // QUERIES TO A CATEGORY OF STREAMS  //
   ///////////////////////////////////////
 
-  // Returns a live stream of events belonging to the streams of aggregates of given types, emitted as soon as they are stored.
+  // What is a stream category? It's basically streamName.split('::')[0]
+  // So the category of a stream named `example::321` would be `example`
+  // while the category of `another-example` whould be `another-example`
+  // To keep things simple and clear the `::` sequence whould be allowed 0 or 1 time in your streams names
+
+  // Returns a live stream of multiplexed events belonging to streams having the same category, emitted as soon as they are stored.
   rpc SubscribeToStreamsCategory (stream SubscribeToStreamsCategoryRequest) returns (stream StoredEvent);
-  // Returns a live stream of events belonging to the streams of aggregates of given types and stored after a given event.
+  // Returns a live stream of multiplexed events belonging to streams having the same category stored after a given event.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
   rpc CatchUpWithStreamsCategory (stream CatchUpWithStreamsCategoryRequest) returns (stream StoredEvent);
-  // Returns an ending stream of the events belonging to the streams of aggregates of given types, stored after a given event and before the time of request.
+  // Returns an ending stream of multiplexed events belonging to streams having the same category, stored after a given event and before the time of request.
   // Clients can specify a `limit` to receive just N events.
   rpc ReadStreamsCategoryForward (ReadStreamsCategoryForwardRequest) returns (stream StoredEvent);
 
@@ -56,9 +61,9 @@ service EventStore {
   // WRITE PROCEDURES //
   //////////////////////
 
-  // Attempts to write a list of events into a stream
+  // Attempts to append a list of events belonging to a stream
   rpc AppendEventsToStream (AppendEventsToStreamRequest) returns (StoredEventsList);
-  // Attempts to write N list of events into N aggregate streams
+  // Attempts to append N list of events belonging to N streams
   rpc AppendEventsToMultipleStreams (AppendEventsToMultipleStreamsRequest) returns (StoredEventsList);
 }
 
@@ -67,6 +72,7 @@ message EmptyDTO {}
 message UniqueIdResponse {
   string uniqueId = 1;
 }
+
 
 message Event {
   string type = 1;

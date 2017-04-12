@@ -2,12 +2,12 @@ CREATE TABLE IF NOT EXISTS events (
   id BIGSERIAL,
   stream VARCHAR(256) NOT NULL,
   type VARCHAR(256) NOT NULL,
-  versionnumber INT NOT NULL CHECK (versionNumber > 0),
+  versionnumber INT NOT NULL CHECK (versionnumber > 0),
   storedon TIMESTAMP NOT NULL DEFAULT NOW(),
   data TEXT NOT NULL,
   transactionid VARCHAR(36) NOT NULL,
 
-  PRIMARY KEY (stream, versionNumber)
+  PRIMARY KEY (stream, versionnumber)
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS by_id_idx ON events (id);

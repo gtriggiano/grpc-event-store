@@ -3,19 +3,19 @@ export default function eventRecordToDTO (record) {
     id,
     type,
     stream,
-    versionNumber,
-    storedOn,
+    versionnumber,
+    storedon,
     data,
-    transactionId
+    transactionid
   } = record
 
   return {
     id,
     type,
     stream,
-    versionNumber: parseInt(versionNumber, 10),
-    storedOn: storedOn.toISOString(),
+    versionNumber: parseInt(versionnumber, 10),
+    storedOn: storedon.toISOString(),
     data,
-    transactionId
+    transactionId: transactionid
   }
 }
