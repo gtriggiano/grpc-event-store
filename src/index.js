@@ -1,10 +1,15 @@
-import ServiceNode from './ServiceNode'
-import { EventStoreProtocol } from './GRPCInterface'
+import Node from './EventStoreNode'
+import { getProtocol, PROTOCOL_FILE_PATH } from './Protocol'
+import { ANY_VERSION_NUMBER, ANY_POSITIVE_VERSION_NUMBER } from './GRPCServer/Implementation/AppendEventsToStream'
+import CockroachDBAdapter from './DbAdapters/CockroachDB'
+import PostgreSQLAdapter from './DbAdapters/PostgreSQL'
 
-let lib = {}
-Object.defineProperties(lib, {
-  ServiceNode: {enumerable: true, value: ServiceNode},
-  EventStoreProtocol: {enumerable: true, value: EventStoreProtocol}
-})
-
-module.exports = lib
+export {
+  Node,
+  CockroachDBAdapter,
+  PostgreSQLAdapter,
+  getProtocol,
+  PROTOCOL_FILE_PATH,
+  ANY_VERSION_NUMBER,
+  ANY_POSITIVE_VERSION_NUMBER
+}

@@ -7,20 +7,20 @@ service EventStore {
   rpc Ping (EmptyDTO) returns (EmptyDTO);
 
   // Get a uuid
-  rpc GetUid (EmptyDTO) returns (UidResponse);
+  rpc GetUniqueId (EmptyDTO) returns (UniqueIdResponse);
 
   /////////////////////////////////
   // QUERIES TO THE ENTIRE STORE //
   /////////////////////////////////
 
   // Returns a live stream of events emitted as soon as they are stored.
-  rpc SubscribeToStoreStream (stream EmptyDTO) returns (stream StoredEvent);
+  rpc SubscribeToStore (stream EmptyDTO) returns (stream StoredEvent);
   // Returns a live stream of all the events stored after a certain one.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc CatchUpStoreStream (stream CatchUpStoreStreamRequest) returns (stream StoredEvent);
+  rpc CatchUpWithStore (stream CatchUpWithStoreRequest) returns (stream StoredEvent);
   // Returns an ending stream of events stored after a certain one, up to the moment of request.
   // Clients can specify a `limit` to receive just N events.
-  rpc ReadStoreStreamForward (ReadStoreStreamForwardRequest) returns (stream StoredEvent);
+  rpc ReadStoreForward (ReadStoreForwardRequest) returns (stream StoredEvent);
 
 
   /////////////////////////
@@ -31,7 +31,7 @@ service EventStore {
   rpc SubscribeToStream (stream SubscribeToStreamRequest) returns (stream StoredEvent);
   // Returns a live stream of all events belonging to an aggregate stream and having a version number > than the provided one.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc CatchUpStream (stream CatchUpStreamRequest) returns (stream StoredEvent);
+  rpc CatchUpWithStream (stream CatchUpWithStreamRequest) returns (stream StoredEvent);
   // Returns an ending stream of all the events belonging to an aggregate, having a version number > than the provided one and stored before the time of request.
   // Clients can specify a `limit` to receive just N events.
   rpc ReadStreamForward (ReadStreamForwardRequest) returns (stream StoredEvent);
@@ -43,13 +43,13 @@ service EventStore {
   ///////////////////////////////////////
 
   // Returns a live stream of events belonging to the streams of aggregates of given types, emitted as soon as they are stored.
-  rpc SubscribeToCategoryOfStreams (stream SubscribeToCategoryOfStreamsRequest) returns (stream StoredEvent);
+  rpc SubscribeToStreamsCategory (stream SubscribeToStreamsCategoryRequest) returns (stream StoredEvent);
   // Returns a live stream of events belonging to the streams of aggregates of given types and stored after a given event.
   // The server implementation should transparently switch to live events as soon as the old ones are sent.
-  rpc CatchUpCategoryOfStreams (stream CatchUpCategoryOfStreamsRequest) returns (stream StoredEvent);
+  rpc CatchUpWithStreamsCategory (stream CatchUpWithStreamsCategoryRequest) returns (stream StoredEvent);
   // Returns an ending stream of the events belonging to the streams of aggregates of given types, stored after a given event and before the time of request.
   // Clients can specify a `limit` to receive just N events.
-  rpc ReadCategoryOfStreamsForward (ReadCategoryOfStreamsForwardRequest) returns (stream StoredEvent);
+  rpc ReadStreamsCategoryForward (ReadStreamsCategoryForwardRequest) returns (stream StoredEvent);
 
 
   //////////////////////
@@ -57,15 +57,15 @@ service EventStore {
   //////////////////////
 
   // Attempts to write a list of events into a stream
-  rpc WriteToStream (WriteToStreamRequest) returns (StoredEventsList);
+  rpc AppendEventsToStream (AppendEventsToStreamRequest) returns (StoredEventsList);
   // Attempts to write N list of events into N aggregate streams
-  rpc WriteToMultipleStreams (WriteToMultipleStreamsRequest) returns (StoredEventsList);
+  rpc AppendEventsToMultipleStreams (AppendEventsToMultipleStreamsRequest) returns (StoredEventsList);
 }
 
 message EmptyDTO {}
 
-message UidResponse {
-  string uid = 1;
+message UniqueIdResponse {
+  string uniqueId = 1;
 }
 
 message Event {
@@ -77,17 +77,17 @@ message StoredEvent {
   sint64 id = 1;
   string type = 2;
   string stream = 3;
-  string stored = 4;
+  string storedOn = 4;
   int32  versionNumber = 5;
   string data = 6;
   string transactionId = 8;
 }
 
 
-message CatchUpStoreStreamRequest {
+message CatchUpWithStoreRequest {
   sint64 fromEventId = 1;
 }
-message ReadStoreStreamForwardRequest {
+message ReadStoreForwardRequest {
   sint64 fromEventId = 1;
   int32 limit = 2;
 }
@@ -95,7 +95,7 @@ message ReadStoreStreamForwardRequest {
 message SubscribeToStreamRequest {
   string stream = 1;
 }
-message CatchUpStreamRequest {
+message CatchUpWithStreamRequest {
   string stream = 1;
   sint64 fromVersionNumber = 2;
 }
@@ -105,27 +105,27 @@ message ReadStreamForwardRequest {
   int32  limit = 3;
 }
 
-message SubscribeToCategoryOfStreamsRequest {
+message SubscribeToStreamsCategoryRequest {
   string streamsCategory = 1;
 }
-message CatchUpCategoryOfStreamsRequest {
+message CatchUpWithStreamsCategoryRequest {
   string streamsCategory = 1;
   sint64 fromEventId = 2;
 }
-message ReadCategoryOfStreamsForwardRequest {
+message ReadStreamsCategoryForwardRequest {
   string streamsCategory = 1;
   sint64 fromEventId = 2;
   int32  limit = 3;
 }
 
-message WriteToStreamRequest {
+message AppendEventsToStreamRequest {
   string stream = 1;
   int32 expectedVersionNumber = 2;
   repeated Event events = 3;
 }
 
-message WriteToMultipleStreamsRequest {
-  repeated WriteToStreamRequest writeRequests = 1;
+message AppendEventsToMultipleStreamsRequest {
+  repeated AppendEventsToStreamRequest appendRequests = 1;
 }
 
 message StoredEventsList {

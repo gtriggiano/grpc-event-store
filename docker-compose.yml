@@ -5,30 +5,42 @@ services:
     build:
       context: .
       dockerfile: docker/Dev.dockerfile
+    image: grpc-event-store:development
     volumes:
       - ./lib:/package/lib
       - ./src:/package/src
       - ./tests:/package/tests
-      - ./tests-src:/package/tests-src
+      - ./lib-tests:/package/lib-tests
       - ./.babelrc:/package/.babelrc
       - ./GRPCEventStore.proto:/package/GRPCEventStore.proto
       - ./package.json:/package/package.json
 
-  test-node:
+  testServer:
     build:
       context: .
       dockerfile: docker/Dev.dockerfile
-    command: ["better-npm-run", "start:testnode"]
+    image: grpc-event-store:development
+    command: ["babel-node", "tests/testServer"]
     volumes:
+      - ./lib:/package/lib
       - ./src:/package/src
-      - ./tests-src:/package/tests-src
+      - ./tests:/package/tests
+      - ./lib-tests:/package/lib-tests
       - ./.babelrc:/package/.babelrc
       - ./GRPCEventStore.proto:/package/GRPCEventStore.proto
       - ./package.json:/package/package.json
 
-  cockroach:
-    image: cockroachdb/cockroach:beta-20170112
+  cockroachdb:
+    image: cockroachdb/cockroach:beta-20170406
     ports:
       - "8080:8080"
       - "26257:26257"
     command: start --insecure
+
+  postgresql:
+    image: postgres:9.6.2
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=eventstore
+      - POSTGRES_PASSWORD=password

@@ -3,8 +3,8 @@
 # Distribution folder
 lib/
 
-# Distribution folder
-tests/
+# Tests distribution folder
+lib-tests/
 
 # NPM stuff
 node_modules

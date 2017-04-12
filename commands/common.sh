@@ -1,33 +1,91 @@
 #!/bin/bash
 
-COMPOSE_PROJECT=grpceventstore
+PKG_NAME=grpceventstore
 
 function cleanContainers () {
   echo
-  echo -n 'Stopping and removing containers... '
-  docker-compose -p $COMPOSE_PROJECT stop &>/dev/null
-  docker-compose -p $COMPOSE_PROJECT rm -f &>/dev/null
+  echo -n 'Stopping and removing all containers... '
+  docker-compose -p $PKG_NAME stop &>/dev/null
+  docker-compose -p $PKG_NAME rm -f &>/dev/null
   echo 'Done.'
   echo
 }
 
-function startCluster () {
-  cleanContainers
-  echo -n 'Starting CockroachDB instance... '
-  docker-compose -p $COMPOSE_PROJECT up -d cockroach &>/dev/null
+function cleanService () {
+  local SERVICE=$1
+  if [[ -n "$SERVICE" ]]; then
+    echo
+    echo -n "Stopping and removing all '$SERVICE' containers... "
+    docker-compose -p $PKG_NAME stop $SERVICE &>/dev/null
+    docker-compose -p $PKG_NAME rm -f $SERVICE &>/dev/null
+    echo 'Done.'
+    echo
+  fi
+}
+
+function startService () {
+  local SERVICE=$1
+  if [[ -n "$SERVICE" ]]; then
+    echo
+    echo -n "Starting service '$SERVICE'... "
+    docker-compose -p $PKG_NAME up -d $SERVICE &>/dev/null
+    echo 'Done.'
+    echo
+  fi
+}
+
+function stopService () {
+  local SERVICE=$1
+  if [[ -n "$SERVICE" ]]; then
+    echo
+    echo -n "Stopping all '$SERVICE' containers... "
+    docker-compose -p $PKG_NAME stop $SERVICE &>/dev/null
+    echo 'Done.'
+    echo
+  fi
+}
+
+function runAsService () {
+  local SERVICE=$1
+  shift
+  local CMD=$@
+  if [[ -n "$SERVICE" && -n "$CMD"  ]]; then
+    docker-compose -p $PKG_NAME run $SERVICE bash -c "$CMD"
+  fi
+}
+
+function cleanCockroachDbInstance () {
+  cleanService cockroachdb &> /dev/null
+}
+
+function setupCockroachDbInstance () {
+  cleanCockroachDbInstance &> /dev/null
+  startService cockroachdb &> /dev/null
   sleep 2
-  echo 'Done.'
-  echo -n 'Creating eventstore database... '
-  docker exec "${COMPOSE_PROJECT}_cockroach_1" ./cockroach sql -e "create database eventstore;" &>/dev/null
-  echo 'Done.'
-  echo
-  echo -n 'Starting a cluster of 2 package nodes... '
-  docker-compose -p $COMPOSE_PROJECT scale test-node=1 &>/dev/null
-  sleep 1
-  echo -n '(1) '
-  docker-compose -p $COMPOSE_PROJECT scale test-node=2 &>/dev/null
-  sleep 1
-  echo -n '(2) '
-  echo 'Done.'
-  echo
+  docker exec "${PKG_NAME}_cockroachdb_1" ./cockroach sql -e "CREATE DATABASE eventstore;" &> /dev/null
+  CREATE_TABLE_SQL=$(cat ${BASH_SOURCE%/*}/../src/DbAdapters/CockroachDB/createTable.sql)
+  docker exec "${PKG_NAME}_cockroachdb_1" ./cockroach sql -d eventstore -e "$CREATE_TABLE_SQL" &> /dev/null
+}
+
+function cleanPostgreSQLInstance () {
+  cleanService postgresql &> /dev/null
+}
+
+function setupPostgreSQLInstance () {
+  cleanPostgreSQLInstance &> /dev/null
+  startService postgresql &> /dev/null
+  sleep 2
+}
+
+function cleanTestServer () {
+  cleanService testServer &> /dev/null
+}
+
+function startTestServer () {
+  cleanTestServer &> /dev/null
+  startService testServer &> /dev/null
+}
+
+function separator () {
+  echo "================================================="
 }

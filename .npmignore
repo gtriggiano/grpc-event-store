@@ -9,7 +9,7 @@ src/
 
 # Tests folders
 tests/
-tests-src/
+lib-tests/
 
 # Babel
 .babelrc

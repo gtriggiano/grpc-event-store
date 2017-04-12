@@ -1,73 +1,111 @@
-import { isString, isInteger, range, curry } from 'lodash'
-import Rx from 'rxjs'
+import util from 'util'
+import Rx from 'rxjs/Rx'
+import grpc from 'grpc'
+import {
+  isString,
+  isEmpty,
+  isInteger,
+  isArray,
+  isObject,
+  isFunction,
+  range,
+  curry,
+  every,
+  some
+} from 'lodash'
 
-let validHostnameRegex = /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$/
+export const prefixedString = curry((prefix, str) => `${prefix}${str}`)
 
-export let prefixString = curry((prefix, str) => `${prefix}${str}`)
+export const isNotEmptyString = str => isString(str) && !isEmpty(str)
 
-export let timeoutCallback = curry((timeout, msg, cb) => {
-  let _called = false
-  let _invoke = (...args) => {
-    if (_called) return
-    _called = true
-    cb(...args)
-  }
-  setTimeout(() => {
-    _invoke(new Error(msg))
-  }, timeout)
-  return _invoke
+export const isPositiveInteger = n => isInteger(n) && n > 0
+
+export const isArrayOfNotEmptyStrings = arr => isArray(arr) && every(arr, isNotEmptyString)
+
+export const areValidGRPCCredentials = credentials => credentials instanceof grpc.ServerCredentials
+
+export const hasDbAdapterInterface = dbAdapter =>
+  isObject(dbAdapter) &&
+  isFunction(dbAdapter.getEvents) &&
+  isFunction(dbAdapter.getEventsByStream) &&
+  isFunction(dbAdapter.getEventsByStreamsCategory) &&
+  isFunction(dbAdapter.appendEvents)
+
+export const hasStoreBusInterface = storeBus =>
+  isObject(storeBus) &&
+  isFunction(storeBus.on) &&
+  isFunction(storeBus.publish) &&
+  (
+    !storeBus.safeOrderTimeframe ||
+    (
+      isInteger(storeBus.safeOrderTimeframe) &&
+      storeBus.safeOrderTimeframe > 0
+    )
+  )
+
+export const stringMatchesSomeRegex = curry((regexList, str) => {
+  if (!regexList || isEmpty(regexList)) return true
+  return some(regexList, regex => regex.test(str))
 })
 
-export let isValidString = (str) => isString(str) && !!str.length
-
-export let isValidHostname = (str) => isString(str) && validHostnameRegex.test(str)
-
-export let isPositiveInteger = (n) => isInteger(n) && n > 0
-
-export let zeropad = (i, minLength) => {
+export const zeropad = (i, minLength) => {
   let str = String(i)
-  let diff = minLength - str.length
-  if (diff > 0) {
-    str = `${range(diff).map(() => 0).join('')}${str}`
-  }
-  return str
+  let diff = Math.max(minLength - str.length, 0)
+  let pad = range(diff).map(() => 0).join('')
+  return `${pad}${str}`
 }
 
-export let eventsStreamFromBus = (bus, delayTime = 100) => {
-  let receivedEvents = {
-    ids: [],
-    byId: {}
+export const eventsStreamFromDbEmitter = dbEmitter => {
+  let eventsStream = Rx.Observable.fromEvent(dbEmitter, 'event')
+  let errorsStream = Rx.Observable.fromEvent(dbEmitter, 'error').flatMap(e => Rx.Observable.throw(e))
+  let endStream = Rx.Observable.fromEvent(dbEmitter, 'end')
+
+  return eventsStream.merge(errorsStream).takeUntil(endStream)
+}
+
+export const eventsStreamFromStoreBus = storeBus => {
+  let receivedEvents = {ids: [], byId: {}}
+
+  function pushEvent (evt) {
+    let id = zeropad(evt.id, 25)
+    receivedEvents.ids.push(id)
+    receivedEvents.ids.sort()
+    receivedEvents.byId[id] = evt
+    return true
+  }
+  function unshiftOldestEvent () {
+    let eventId = receivedEvents.ids.shift()
+    let evt = receivedEvents.byId[eventId]
+    delete receivedEvents.byId[eventId]
+    return evt
   }
 
-  // We create an hot observable through the publish().connect() sequence
-  let stream = Rx.Observable.fromEvent(bus, 'StoredEvents')
-    .map(msg => JSON.parse(msg))
+  let eventsStream = Rx.Observable.fromEvent(storeBus, 'newEvents')
+    .map(payload => JSON.parse(payload))
     .flatMap(events => Rx.Observable.from(events))
-    .map(evt => {
-      let evtId = zeropad(evt.id, 25)
-      receivedEvents.ids.push(evtId)
-      receivedEvents.ids.sort()
-      receivedEvents.byId[evtId] = evt
-      return receivedEvents
-    })
-    .delay(delayTime)
-    .map(evt => {
-      let oldestEventId = receivedEvents.ids.shift()
-      let oldestEvent = receivedEvents.byId[oldestEventId]
-      delete receivedEvents.byId[oldestEventId]
-      return oldestEvent
-    })
+    .map(pushEvent)
+
+  if (storeBus.safeOrderTimeframe) {
+    eventsStream = eventsStream.delay(storeBus.safeOrderTimeframe)
+  }
+
+  eventsStream = eventsStream
+    .map(unshiftOldestEvent)
     .publish()
 
-  stream.connect() // TODO: should we take a reference to this subscription to end it later?
+  eventsStream.connect()
 
-  return stream
+  return eventsStream
 }
 
-export let eventsStreamFromBackendEmitter = (e) => {
-  let evt = Rx.Observable.fromEvent(e, 'event')
-  let error = Rx.Observable.fromEvent(e, 'error').flatMap(err => Rx.Observable.throw(err))
-  let end = Rx.Observable.fromEvent(e, 'end')
+export const defineError = (errorName, errorMessage) => {
+  function CustomError () {
+    Error.captureStackTrace(this, this.constructor)
+    this.name = errorName
+    this.message = errorMessage
+  }
 
-  return evt.merge(error).takeUntil(end)
+  util.inherits(CustomError, Error)
+  Object.defineProperty(CustomError, 'name', {value: `${errorName}`})
+  return CustomError
 }
