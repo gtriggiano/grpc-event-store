@@ -12,7 +12,7 @@ import {
 import {
   ANY_VERSION_NUMBER,
   ANY_POSITIVE_VERSION_NUMBER
-} from '../../../GRPCServer/Implementation/AppendEventsToStream'
+} from '../../GRPCServer/Implementation/AppendEventsToStream'
 
 function InMemoryAdapter (config = {}) {
   let _config = {...defaultConfig, ...config}
@@ -79,7 +79,7 @@ function InMemoryAdapter (config = {}) {
         let now = new Date()
         let eventsToAppend = flatten(processedAppendRequests).map((event, idx) => ({
           ...event,
-          id: `${events.length + idx}`,
+          id: `${events.length + 1 + idx}`,
           storedOn: now.toISOString(),
           transactionId
         }))
@@ -102,7 +102,7 @@ function InMemoryAdapter (config = {}) {
       value: ({fromEventId, limit}) => {
         let dbResults = new EventEmitter()
 
-        let _events = events.filter(({id}) => id > fromEventId)
+        let _events = events.filter(({id}) => parseInt(id) > fromEventId)
         _events = limit ? _events.slice(0, limit) : _events
 
         setTimeout(() => {
@@ -134,7 +134,7 @@ function InMemoryAdapter (config = {}) {
       value: ({streamsCategory, fromEventId, limit}) => {
         let dbResults = new EventEmitter()
 
-        let _events = events.filter(({id, stream}) => id > fromEventId && (stream === streamsCategory || stream.split('::')[0] === streamsCategory))
+        let _events = events.filter(({id, stream}) => parseInt(id) > fromEventId && (stream === streamsCategory || stream.split('::')[0] === streamsCategory))
         _events = limit ? _events.slice(0, limit) : _events
 
         setTimeout(() => {
@@ -150,9 +150,7 @@ function InMemoryAdapter (config = {}) {
 }
 
 const defaultConfig = {
-  events: [],
-  JSONFile: null,
-  onStateUpdate: null
+  JSONFile: null
 }
 
 const prefix = prefixedString('[grpc Event Store InMemoryAdapter] ')
@@ -164,17 +162,18 @@ const parseConfig = ({
   if (JSONFile) {
     let file
     try {
-      file = fs.fstatSync(JSONFile)
-      if (!file.isFile()) throw new Error(`config.JSONFile MUST be either falsy or a path of a json file of events`)
+      file = fs.statSync(JSONFile)
+
+      if (!file.isFile()) throw new Error()
       try {
         let fileEvents = JSON.parse(fs.readFileSync(JSONFile, 'utf8'))
+
         if (!isArray(fileEvents)) throw new Error()
         state.JSONFile = JSONFile
-      } catch (e) {
-        state.events = []
-      }
+        state.events = fileEvents
+      } catch (e) {}
     } catch (e) {
-      throw new TypeError(prefix(e.message))
+      throw new TypeError(prefix('config.JSONFile MUST be either falsy or a path of a json file of events'))
     }
   }
 

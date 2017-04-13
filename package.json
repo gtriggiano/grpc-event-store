@@ -10,6 +10,7 @@
     "test": "./commands/transpile.sh && ./commands/tests.sh",
     "dev:unit:tests": "./commands/unit:tests.sh live",
     "dev:cockroachdb:tests": "./commands/cockroachdb:tests.sh live",
+    "dev:inmemorydb:tests": "./commands/inmemorydb:tests.sh live",
     "dev:postgresql:tests": "./commands/postgresql:tests.sh live",
     "dev:integration:tests": "./commands/integration:tests.sh live",
     "transpile": "./commands/transpile.sh",
