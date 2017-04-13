@@ -36,6 +36,7 @@ const streamsByName = events.reduce((map, event) => {
   return map
 }, {})
 const streams = Object.keys(streamsByName).map(stream => streamsByName[stream])
+const eventsByStreamsCategory = streamsCategory => events.filter(({stream}) => stream === streamsCategory || stream.split('::')[0] === streamsCategory)
 
 const libFolder = `../../${process.env.LIB_FOLDER}`
 
@@ -145,7 +146,7 @@ describe('dbResults = db.getEvents({fromEventId[, limit]})', () => {
 })
 describe('dbResults = db.getEventsByStream({stream, fromVersionNumber[, limit]})', () => {
   beforeEach(() => makeTestFile())
-  // FIXME: fix tests of InMemoryAdapter.getEventsByStreamsCategory
+
   it('is an event emitter', (done) => {
     let db = getAdapter(TEST_JSON_FILE)
     let dbResults = db.getEventsByStream({stream: streams[0].name, fromVersionNumber: 0})
@@ -233,11 +234,12 @@ describe('dbResults = db.getEventsByStreamsCategory({streamsCategory, fromEventI
     let testStream = sample(streams)
     let db = getAdapter(TEST_JSON_FILE)
     let dbResults = db.getEventsByStreamsCategory({streamsCategory: testStream.category, fromEventId: 0})
+    let expectedEvents = eventsByStreamsCategory(testStream.category)
 
     let fetchedEvents = []
     dbResults.on('event', (event) => fetchedEvents.push(event))
     dbResults.on('end', () => {
-      should(fetchedEvents.length >= testStream.version).be.True()
+      should(fetchedEvents.length).equal(expectedEvents.length)
       done()
     })
   })
@@ -260,17 +262,17 @@ describe('dbResults = db.getEventsByStreamsCategory({streamsCategory, fromEventI
     let fetchedEvents = []
     dbResults.on('event', (event) => fetchedEvents.push(event))
     dbResults.on('end', () => {
-      let idList = fetchedEvents.map(({id}) => id)
-      let sortedIdList = idList.slice().sort()
+      let idList = fetchedEvents.map(({id}) => parseInt(id))
+      let sortedIdList = sortBy(idList)
       should(idList).eql(sortedIdList)
       done()
     })
   })
   it('emits just events with `id` > `fromEventId`', (done) => {
     let testStream = sample(streams)
-    let streamEvents = events.filter(({stream}) => stream === testStream.name)
-    let splitEvent = sample(streamEvents)
-    let expectedEvents = streamEvents.filter(({id}) => id > splitEvent.id)
+    let expectedEvents = eventsByStreamsCategory(testStream.category)
+    let splitEvent = sample(expectedEvents)
+    expectedEvents = expectedEvents.filter(({id}) => parseInt(id) > parseInt(splitEvent.id))
 
     let db = getAdapter(TEST_JSON_FILE)
     let dbResults = db.getEventsByStreamsCategory({streamsCategory: testStream.category, fromEventId: splitEvent.id})
@@ -410,48 +412,45 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
     })
     dbResults.on('storedEvents', () => done(new Error('should emit error')))
   })
-  it('DOES NOT write any event if the writing to any stream fails', (done) => {
-    getEventsCount()
-    .then(totalEvents => {
-      let db = getAdapter()
-      let transactionId = shortid()
+  it('DOES NOT write any event if the writing to any stream fails', (done) => {let db = getAdapter(TEST_JSON_FILE)
+    let transactionId = shortid()
 
-      let testStream = sample(streams)
+    let testStream = sample(streams)
+    let totalEvents = events.length
 
-      let dbResults = db.appendEvents({
-        appendRequests: [
-          {
-            stream: testStream.name,
-            events: [
-              {type: shortid(), data: ''},
-              {type: shortid(), data: ''}
-            ],
-            expectedVersionNumber: testStream.version - 1
-          },
-          {
-            stream: 'newStream',
-            events: [
-              {type: shortid(), data: ''}
-            ],
-            expectedVersionNumber: 0
-          }
-        ],
-        transactionId
-      })
-
-      dbResults.on('error', () => {
-        getEventsCount()
-        .then(newTotalEvents => {
-          should(newTotalEvents).equal(totalEvents)
-          done()
-        })
-      })
-      dbResults.on('storedEvents', () => done(new Error('should not emit stored events')))
+    let dbResults = db.appendEvents({
+      appendRequests: [
+        {
+          stream: testStream.name,
+          events: [
+            {type: shortid(), data: ''},
+            {type: shortid(), data: ''}
+          ],
+          expectedVersionNumber: testStream.version - 1
+        },
+        {
+          stream: 'newStream',
+          events: [
+            {type: shortid(), data: ''}
+          ],
+          expectedVersionNumber: 0
+        }
+      ],
+      transactionId
     })
+
+    dbResults.on('error', () => {
+      let evts = JSON.parse(fs.readFileSync(TEST_JSON_FILE))
+      should(totalEvents).equal(evts.length)
+      done()
+    })
+    dbResults.on('storedEvents', () => done(new Error('should not emit stored events')))
   })
   it('creates a new stream if writing to a not existent stream with expectedVersionNumber === ANY_VERSION_NUMBER', (done) => {
-    let db = getAdapter()
+    let db = getAdapter(TEST_JSON_FILE)
     let transactionId = shortid()
+
+    let totalEvents = events.length
 
     let dbResults = db.appendEvents({
       appendRequests: [
@@ -468,21 +467,14 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
 
     dbResults.on('error', done)
     dbResults.on('storedEvents', (storedEvents) => {
-      getDbStreams().then((streams) => {
-        should(storedEvents).containDeepOrdered([
-          {
-            stream: 'notExistent',
-            type: 'aType',
-            data: ''
-          }
-        ])
-        should(streams.indexOf('notExistent') >= 0).be.True()
-        done()
-      })
+      let evts = JSON.parse(fs.readFileSync(TEST_JSON_FILE))
+      should(evts.length).equal(totalEvents + 1)
+      should(evts.filter(({stream}) => stream === 'notExistent').length).equal(1)
+      done()
     })
   })
   it('saves events for multiple streams whithin the same transaction', (done) => {
-    let db = getAdapter()
+    let db = getAdapter(TEST_JSON_FILE)
     let transactionId = shortid()
 
     let testStream = sample(streams)

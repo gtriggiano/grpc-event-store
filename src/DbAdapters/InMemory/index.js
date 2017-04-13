@@ -35,7 +35,7 @@ function InMemoryAdapter (config = {}) {
   }
 
   function processAppendRequest ({
-    appendRequests: {stream, events, expectedVersionNumber},
+    appendRequest: {stream, events, expectedVersionNumber},
     streamVersionNumber
   }) {
     if (expectedVersionNumber !== ANY_VERSION_NUMBER) {
@@ -70,29 +70,33 @@ function InMemoryAdapter (config = {}) {
         let streamsVersionNumbers = getStreamsVersionNumbers(streams)
 
         let processedAppendRequests = appendRequests.map(appendRequest => processAppendRequest({
-          appendRequests,
+          appendRequest,
           streamVersionNumber: streamsVersionNumbers[appendRequest.stream]
         }))
         let errors = processedAppendRequests.filter(result => result instanceof Error)
-        if (errors.length) return Promise.reject(new Error(`CONSISTENCY|${JSON.stringify(errors.map(({stream, reason}) => ({stream, reason})))}`))
+        if (errors.length) {
+          process.nextTick(() => {
+            dbResults.emit('error', new Error(`CONSISTENCY|${JSON.stringify(errors.map(({stream, reason}) => ({stream, reason})))}`))
+          })
+        } else {
+          let now = new Date()
+          let eventsToAppend = flatten(processedAppendRequests).map((event, idx) => ({
+            ...event,
+            id: `${events.length + 1 + idx}`,
+            storedOn: now.toISOString(),
+            transactionId
+          }))
 
-        let now = new Date()
-        let eventsToAppend = flatten(processedAppendRequests).map((event, idx) => ({
-          ...event,
-          id: `${events.length + 1 + idx}`,
-          storedOn: now.toISOString(),
-          transactionId
-        }))
+          events.push(...eventsToAppend)
 
-        events.push(...eventsToAppend)
+          if (JSONFile) {
+            try {
+              fs.writeFileSync(JSONFile, JSON.stringify(events))
+            } catch (e) {}
+          }
 
-        if (JSONFile) {
-          try {
-            fs.writeFileSync(JSONFile, JSON.stringify(events))
-          } catch (e) {}
+          process.nextTick(() => dbResults.emit('storedEvents', eventsToAppend))
         }
-
-        process.nextTick(() => dbResults.emit('storedEvents', eventsToAppend))
 
         return dbResults
       },
