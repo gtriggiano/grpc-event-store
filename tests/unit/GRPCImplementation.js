@@ -12,7 +12,7 @@ const libFolder = `../../${process.env.LIB_FOLDER}`
 const Implementation = require(`${libFolder}/GRPCServer/Implementation`).default
 
 describe('GRPC Implementation', () => {
-  describe('appendEventsToStream(call, callback)', () => {
+  describe.only('appendEventsToStream(call, callback)', () => {
     it('is a function', () => should(Implementation({}).appendEventsToStream).be.a.Function())
     it('invokes callback(error) if call.request.stream is not a non empty string', () => {
       let {config, args: {call, callback}} = Mocks()
@@ -72,13 +72,14 @@ describe('GRPC Implementation', () => {
 
       should(callback.calledOnce).be.True()
       should(callback.firstCall.args[0]).be.an.instanceOf(Error)
+      should(callback.firstCall.args[0].message).equal(`stream 'testStream' is not writable`)
     })
     it('invokes db.appendEvents() with right parameters', () => {
-      let {config, args: {call, callback}} = Mocks()
+      let {config, args: {call, callback}} = Mocks(['^imwritable'])
       let impl = Implementation(config)
 
       call.request = {
-        stream: 'testStream',
+        stream: 'imwritable::test',
         events: [{type: 'evtType', data: ''}],
         expectedVersionNumber: random(-10, 10)
       }
@@ -249,18 +250,18 @@ describe('GRPC Implementation', () => {
       })
     })
     it('invokes callback(null, {events}) if the events are successfully appended', (done) => {
-      let {config, args: {call}} = Mocks()
+      let {config, args: {call}} = Mocks(['^writable'])
       let impl = Implementation(config)
 
       call.request = {
         appendRequests: [
           {
-            stream: 'aStream',
+            stream: 'writable::1',
             events: [{type: 'evtType', data: 'data'}],
             expectedVersionNumber: -2
           },
           {
-            stream: 'bStream',
+            stream: 'writable::2',
             events: [{type: 'evtType', data: 'data'}],
             expectedVersionNumber: -2
           }
@@ -274,11 +275,11 @@ describe('GRPC Implementation', () => {
         should(results.events).containDeepOrdered([
           {
             type: 'evtType',
-            stream: 'aStream'
+            stream: 'writable::1'
           },
           {
             type: 'evtType',
-            stream: 'bStream'
+            stream: 'writable::2'
           }
         ])
         done()
