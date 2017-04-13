@@ -35,7 +35,7 @@ export default function EventStoreNode (config) {
     let eventsString = JSON.stringify(events)
     storeBus.publish(eventsString)
   }
-  let isStreamWritable = stringMatchesSomeRegex(writableStreamsPatterns.map(str => new RegExp(str)))
+  let isStreamWritable = stringMatchesSomeRegex(writableStreamsPatterns && writableStreamsPatterns.map(str => new RegExp(str)))
 
   return Object.defineProperties(node, {
     start: {value: () => {
