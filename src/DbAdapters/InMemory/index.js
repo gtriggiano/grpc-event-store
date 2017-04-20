@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { List, fromJS } from 'immutable'
 import EventEmitter from 'eventemitter3'
 import {
   isArray,
@@ -15,18 +16,18 @@ import {
 } from '../../GRPCServer/Implementation/AppendEventsToStream'
 
 function InMemoryAdapter (config = {}) {
+  let dbAdapter = new EventEmitter()
   let _config = {...defaultConfig, ...config}
   let state = parseConfig(_config)
 
   let {
-    events,
-    JSONFile
+    events
   } = state
 
   function getStreamsVersionNumbers (streams) {
     let streamsVersionNumbers = events.reduce((streamsVersionNumbers, event) => ({
       ...streamsVersionNumbers,
-      [event.stream]: event.versionNumber
+      [event.get('stream')]: event.get('versionNumber')
     }), {})
     streams.forEach(stream => {
       streamsVersionNumbers[stream] = streamsVersionNumbers[stream] || 0
@@ -62,7 +63,8 @@ function InMemoryAdapter (config = {}) {
     }))
   }
 
-  return Object.defineProperties({}, {
+  return Object.defineProperties(dbAdapter, {
+    internalEvents: {get: () => events.toJS()},
     appendEvents: {
       value: ({appendRequests, transactionId}) => {
         let dbResults = new EventEmitter()
@@ -87,13 +89,9 @@ function InMemoryAdapter (config = {}) {
             transactionId
           }))
 
-          events.push(...eventsToAppend)
+          events = events.concat(fromJS(eventsToAppend))
 
-          if (JSONFile) {
-            try {
-              fs.writeFileSync(JSONFile, JSON.stringify(events))
-            } catch (e) {}
-          }
+          dbAdapter.emit('update')
 
           process.nextTick(() => dbResults.emit('storedEvents', eventsToAppend))
         }
@@ -106,11 +104,11 @@ function InMemoryAdapter (config = {}) {
       value: ({fromEventId, limit}) => {
         let dbResults = new EventEmitter()
 
-        let _events = events.filter(({id}) => parseInt(id) > fromEventId)
+        let _events = events.filter(event => parseInt(event.get('id'), 10) > fromEventId)
         _events = limit ? _events.slice(0, limit) : _events
 
         setTimeout(() => {
-          _events.forEach(event => dbResults.emit('event', event))
+          _events.forEach(event => dbResults.emit('event', event.toJS()))
           dbResults.emit('end')
         }, 1)
 
@@ -122,11 +120,11 @@ function InMemoryAdapter (config = {}) {
       value: ({stream, fromVersionNumber, limit}) => {
         let dbResults = new EventEmitter()
 
-        let _events = events.filter((event) => event.stream === stream && event.versionNumber > fromVersionNumber)
+        let _events = events.filter(event => event.get('stream') === stream && event.get('versionNumber') > fromVersionNumber)
         _events = limit ? _events.slice(0, limit) : _events
 
         setTimeout(() => {
-          _events.forEach(event => dbResults.emit('event', event))
+          _events.forEach(event => dbResults.emit('event', event.toJS()))
           dbResults.emit('end')
         }, 1)
 
@@ -138,11 +136,20 @@ function InMemoryAdapter (config = {}) {
       value: ({streamsCategory, fromEventId, limit}) => {
         let dbResults = new EventEmitter()
 
-        let _events = events.filter(({id, stream}) => parseInt(id) > fromEventId && (stream === streamsCategory || stream.split('::')[0] === streamsCategory))
+        let _events = events.filter(event => {
+          let eventId = parseInt(event.get('id'), 10)
+          let eventStream = event.get('stream')
+
+          return eventId > fromEventId &&
+            (
+              eventStream === streamsCategory ||
+              eventStream.split('::')[0] === streamsCategory
+            )
+        })
         _events = limit ? _events.slice(0, limit) : _events
 
         setTimeout(() => {
-          _events.forEach(event => dbResults.emit('event', event))
+          _events.forEach(event => dbResults.emit('event', event.toJS()))
           dbResults.emit('end')
         }, 1)
 
@@ -161,7 +168,7 @@ const prefix = prefixedString('[grpc Event Store InMemoryAdapter] ')
 const parseConfig = ({
   JSONFile
 }) => {
-  let state = {events: []}
+  let state = {events: List()}
 
   if (JSONFile) {
     let file
@@ -173,11 +180,10 @@ const parseConfig = ({
         let fileEvents = JSON.parse(fs.readFileSync(JSONFile, 'utf8'))
 
         if (!isArray(fileEvents)) throw new Error()
-        state.JSONFile = JSONFile
-        state.events = fileEvents
+        state.events = fromJS(fileEvents)
       } catch (e) {}
     } catch (e) {
-      throw new TypeError(prefix('config.JSONFile MUST be either falsy or a path of a json file of events'))
+      throw new TypeError(prefix('config.JSONFile MUST be either falsy or a path of a json file containing a list of events'))
     }
   }
 
