@@ -7,7 +7,8 @@ import {
   sample,
   every,
   uniq,
-  sortBy
+  sortBy,
+  isString
 } from 'lodash'
 
 const JSON_FILE = path.resolve(__dirname, 'events.json')
@@ -354,7 +355,8 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
         {stream: 'anotherStream', type: 'ThatHappened', data: 'two', transactionId}
       ])
 
-      should(every(storedEvents, ({storedOn}) => (new Date(storedOn)).toISOString() === storedOn)).be.True()
+      should(every(storedEvents, ({id}) => isString(id) && /^\d+$/.test(id))).be.True('Events ids are string representations of integers')
+      should(every(storedEvents, ({storedOn}) => isString(storedOn) && (new Date(storedOn)).toISOString() === storedOn)).be.True('event.storedOn is a string representing a valid date')
 
       let eventsIds = storedEvents.map(({id}) => zeropad(id, 20))
       should(eventsIds.slice().sort()).eql(eventsIds)
