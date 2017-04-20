@@ -10,18 +10,8 @@ import {
   sortBy
 } from 'lodash'
 
-const ORIGINAL_JSON_FILE = path.resolve(__dirname, 'events.json')
-const TEST_JSON_FILE = path.resolve(__dirname, 'test-events.json')
-const makeTestFile = () => new Promise((resolve, reject) => {
-  let originalFile = fs.createReadStream(ORIGINAL_JSON_FILE)
-  let testFile = fs.createWriteStream(TEST_JSON_FILE)
-
-  testFile.on('error', (err) => reject(err))
-  testFile.on('close', () => resolve())
-
-  originalFile.pipe(testFile)
-})
-const events = require(ORIGINAL_JSON_FILE)
+const JSON_FILE = path.resolve(__dirname, 'events.json')
+const events = require(JSON_FILE)
 const streamsByName = events.reduce((map, event) => {
   let stream = map[event.stream]
   if (!stream) {
@@ -51,7 +41,6 @@ const {
 const getAdapter = (JSONFile) => InMemoryAdapter(JSONFile ? {JSONFile} : {})
 
 describe('InMemoryAdapter([config])', () => {
-  beforeEach(() => makeTestFile())
   it('is a function', () => should(InMemoryAdapter).be.a.Function())
   it('passing `config` is optional', () => {
     should(() => {
@@ -61,23 +50,52 @@ describe('InMemoryAdapter([config])', () => {
   it('throws if config.JSONFile is truthy and is not a path to a file', () => {
     should(() => {
       InMemoryAdapter({JSONFile: 'notexist'})
-    }).throw(new RegExp('config.JSONFile MUST be either falsy or a path of a json file of events'))
+    }).throw(new RegExp('config.JSONFile MUST be either falsy or a path of a json file containing a list of events'))
     should(() => {
-      InMemoryAdapter({JSONFile: TEST_JSON_FILE})
+      InMemoryAdapter({JSONFile: JSON_FILE})
     }).not.throw()
   })
 })
 
 describe('db = InMemoryAdapter(config)', () => {
+  it('is an event emitter', () => should(InMemoryAdapter()).be.an.instanceOf(EventEmitter))
   it('db.getEvents() is a function', () => should(InMemoryAdapter().getEvents).be.a.Function())
   it('db.getEventsByStream() is a function', () => should(InMemoryAdapter().getEventsByStream).be.a.Function())
   it('db.getEventsByStreamsCategory() is a function', () => should(InMemoryAdapter().getEventsByStreamsCategory).be.a.Function())
   it('db.appendEvents() is a function', () => should(InMemoryAdapter().appendEvents).be.a.Function())
+  it('emits `update` when new events are appended to the store', (done) => {
+    let db = getAdapter(JSON_FILE)
+    let transactionId = shortid()
+
+    let initialEvents = db.internalEvents
+
+    db.on('update', () => {
+      let finalEvents = db.internalEvents
+      should(finalEvents.length).equal(initialEvents.length + 2)
+      done()
+    })
+
+    db.appendEvents({
+      appendRequests: [
+        {
+          stream: 'a-stream',
+          events: [
+            {type: shortid(), data: ''},
+            {type: shortid(), data: ''}
+          ],
+          expectedVersionNumber: ANY_VERSION_NUMBER
+        }
+      ],
+      transactionId
+    })
+  })
+  it('db.internalEvents is a getter for the list of events in memory', () => {
+    let db = getAdapter(JSON_FILE)
+    should(db.internalEvents).eql(events)
+  })
 })
 
 describe('dbResults = db.getEvents({fromEventId[, limit]})', () => {
-  beforeEach(() => makeTestFile())
-
   it('is an event emitter', (done) => {
     let db = getAdapter()
     let dbResults = db.getEvents({fromEventId: 0})
@@ -87,7 +105,7 @@ describe('dbResults = db.getEvents({fromEventId[, limit]})', () => {
     dbResults.on('end', () => done())
   })
   it('emits `event` for each event fetched and then emits `end`', (done) => {
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEvents({fromEventId: 0})
 
     let fetchedEvents = []
@@ -122,7 +140,7 @@ describe('dbResults = db.getEvents({fromEventId[, limit]})', () => {
     let splitEvent = sample(events)
     let expectedEvents = events.filter(({id}) => parseInt(id) > parseInt(splitEvent.id))
 
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEvents({fromEventId: parseInt(splitEvent.id)})
 
     let fetchedEvents = []
@@ -133,7 +151,7 @@ describe('dbResults = db.getEvents({fromEventId[, limit]})', () => {
     })
   })
   it('takes in to account `limit` param if provided', (done) => {
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEvents({fromEventId: 0, limit: 8})
 
     let fetchedEvents = []
@@ -145,10 +163,8 @@ describe('dbResults = db.getEvents({fromEventId[, limit]})', () => {
   })
 })
 describe('dbResults = db.getEventsByStream({stream, fromVersionNumber[, limit]})', () => {
-  beforeEach(() => makeTestFile())
-
   it('is an event emitter', (done) => {
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStream({stream: streams[0].name, fromVersionNumber: 0})
 
     should(dbResults).be.an.instanceOf(EventEmitter)
@@ -156,7 +172,7 @@ describe('dbResults = db.getEventsByStream({stream, fromVersionNumber[, limit]})
   })
   it('emits `event` for each event fetched and then emits `end`', (done) => {
     let testStream = sample(streams)
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStream({stream: testStream.name, fromVersionNumber: 0})
 
     let fetchedEvents = []
@@ -167,7 +183,7 @@ describe('dbResults = db.getEventsByStream({stream, fromVersionNumber[, limit]})
     })
   })
   it('emits just `end` if no events are found', (done) => {
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStream({stream: 'notexistent', fromVersionNumber: 0})
 
     let fetchedEvents = []
@@ -179,7 +195,7 @@ describe('dbResults = db.getEventsByStream({stream, fromVersionNumber[, limit]})
   })
   it('emits the events ordered by `id`', (done) => {
     let testStream = sample(streams)
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStream({stream: testStream.name, fromVersionNumber: 0})
 
     let fetchedEvents = []
@@ -197,7 +213,7 @@ describe('dbResults = db.getEventsByStream({stream, fromVersionNumber[, limit]})
     let splitEvent = sample(streamEvents)
     let expectedEvents = streamEvents.filter(({id}) => id > splitEvent.id)
 
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStream({stream: testStream.name, fromVersionNumber: splitEvent.versionNumber})
 
     let fetchedEvents = []
@@ -209,7 +225,7 @@ describe('dbResults = db.getEventsByStream({stream, fromVersionNumber[, limit]})
   })
   it('takes in to account `limit` param if provided', (done) => {
     let testStream = sample(streams)
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStream({stream: testStream.name, fromVersionNumber: 0, limit: 1})
 
     let fetchedEvents = []
@@ -221,8 +237,6 @@ describe('dbResults = db.getEventsByStream({stream, fromVersionNumber[, limit]})
   })
 })
 describe('dbResults = db.getEventsByStreamsCategory({streamsCategory, fromEventId[, limit]})', () => {
-  beforeEach(() => makeTestFile())
-
   it('is an event emitter', (done) => {
     let db = getAdapter()
     let dbResults = db.getEventsByStreamsCategory({streamsCategory: 'test', fromEventId: 0})
@@ -232,7 +246,7 @@ describe('dbResults = db.getEventsByStreamsCategory({streamsCategory, fromEventI
   })
   it('emits `event` for each event fetched and then emits `end`', (done) => {
     let testStream = sample(streams)
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStreamsCategory({streamsCategory: testStream.category, fromEventId: 0})
     let expectedEvents = eventsByStreamsCategory(testStream.category)
 
@@ -274,7 +288,7 @@ describe('dbResults = db.getEventsByStreamsCategory({streamsCategory, fromEventI
     let splitEvent = sample(expectedEvents)
     expectedEvents = expectedEvents.filter(({id}) => parseInt(id) > parseInt(splitEvent.id))
 
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStreamsCategory({streamsCategory: testStream.category, fromEventId: splitEvent.id})
 
     let fetchedEvents = []
@@ -287,7 +301,7 @@ describe('dbResults = db.getEventsByStreamsCategory({streamsCategory, fromEventI
   it('takes in to account `limit` param if provided', (done) => {
     let testStream = sample(streams)
 
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let dbResults = db.getEventsByStreamsCategory({streamsCategory: testStream.category, fromEventId: 0, limit: 1})
 
     let fetchedEvents = []
@@ -299,8 +313,6 @@ describe('dbResults = db.getEventsByStreamsCategory({streamsCategory, fromEventI
   })
 })
 describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
-  beforeEach(() => makeTestFile())
-
   it('is an event emitter', () => {
     let db = getAdapter()
     let dbResults = db.appendEvents({appendRequests: [], transactionId: shortid()})
@@ -308,7 +320,7 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
     should(dbResults).be.an.instanceOf(EventEmitter)
   })
   it('emits `storedEvents` with a list of created events, ordered by id ASC', (done) => {
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let transactionId = shortid()
 
     let dbResults = db.appendEvents({
@@ -412,7 +424,8 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
     })
     dbResults.on('storedEvents', () => done(new Error('should emit error')))
   })
-  it('DOES NOT write any event if the writing to any stream fails', (done) => {let db = getAdapter(TEST_JSON_FILE)
+  it('DOES NOT write any event if the writing to any stream fails', (done) => {
+    let db = getAdapter(JSON_FILE)
     let transactionId = shortid()
 
     let testStream = sample(streams)
@@ -440,17 +453,17 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
     })
 
     dbResults.on('error', () => {
-      let evts = JSON.parse(fs.readFileSync(TEST_JSON_FILE))
+      let evts = JSON.parse(fs.readFileSync(JSON_FILE))
       should(totalEvents).equal(evts.length)
       done()
     })
     dbResults.on('storedEvents', () => done(new Error('should not emit stored events')))
   })
   it('creates a new stream if writing to a not existent stream with expectedVersionNumber === ANY_VERSION_NUMBER', (done) => {
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let transactionId = shortid()
 
-    let totalEvents = events.length
+    let dbEvents = db.internalEvents
 
     let dbResults = db.appendEvents({
       appendRequests: [
@@ -467,14 +480,14 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
 
     dbResults.on('error', done)
     dbResults.on('storedEvents', (storedEvents) => {
-      let evts = JSON.parse(fs.readFileSync(TEST_JSON_FILE))
-      should(evts.length).equal(totalEvents + 1)
-      should(evts.filter(({stream}) => stream === 'notExistent').length).equal(1)
+      let finalEvents = db.internalEvents
+      should(finalEvents.length).equal(dbEvents.length + 1)
+      should(finalEvents.filter(({stream}) => stream === 'notExistent').length).equal(1)
       done()
     })
   })
   it('saves events for multiple streams whithin the same transaction', (done) => {
-    let db = getAdapter(TEST_JSON_FILE)
+    let db = getAdapter(JSON_FILE)
     let transactionId = shortid()
 
     let testStream = sample(streams)
@@ -488,13 +501,6 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
             {type: shortid(), data: ''}
           ],
           expectedVersionNumber: testStream.version
-        },
-        {
-          stream: 'newStream',
-          events: [
-            {type: shortid(), data: ''}
-          ],
-          expectedVersionNumber: 0
         }
       ],
       transactionId
