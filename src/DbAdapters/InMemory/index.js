@@ -84,7 +84,7 @@ function InMemoryAdapter (config = {}) {
           let now = new Date()
           let eventsToAppend = flatten(processedAppendRequests).map((event, idx) => ({
             ...event,
-            id: `${events.length + 1 + idx}`,
+            id: `${events.size + 1 + idx}`,
             storedOn: now.toISOString(),
             transactionId
           }))

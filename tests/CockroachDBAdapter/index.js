@@ -4,7 +4,8 @@ import should from 'should/as-function'
 import {
   sample,
   every,
-  uniq
+  uniq,
+  isString
 } from 'lodash'
 
 import {
@@ -18,6 +19,8 @@ import {
 } from './dbTestUtils'
 
 const libFolder = `../../${process.env.LIB_FOLDER}`
+
+const zeropad = require(`../../${process.env.LIB_FOLDER}/utils.js`).zeropad
 
 const CockroachDBAdapter = require(`${libFolder}/DbAdapters/CockroachDB`).default
 const {
@@ -407,16 +410,18 @@ describe('dbResults = db.appendEvents({appendRequests, transactionId})', () => {
     })
 
     dbResults.on('error', done)
-    dbResults.on('storedEvents', (events) => {
-      should(events).containDeepOrdered([
+    dbResults.on('storedEvents', (storedEvents) => {
+      should(storedEvents).containDeepOrdered([
         {stream: 'aNewStream', type: 'ThisHappened', data: 'one', transactionId},
         {stream: 'aNewStream', type: 'ThatHappened', data: 'two', transactionId},
         {stream: 'anotherStream', type: 'ThisHappened', data: 'one', transactionId},
         {stream: 'anotherStream', type: 'ThatHappened', data: 'two', transactionId}
       ])
-      should(every(events, ({storedOn}) => (new Date(storedOn)).toISOString() === storedOn)).be.True()
 
-      let eventsIds = events.map(({id}) => id)
+      should(every(storedEvents, ({id}) => isString(id) && /^\d+$/.test(id))).be.True('Events ids are string representations of integers')
+      should(every(storedEvents, ({storedOn}) => isString(storedOn) && (new Date(storedOn)).toISOString() === storedOn)).be.True('event.storedOn is a string representing a valid date')
+
+      let eventsIds = storedEvents.map(({id}) => zeropad(id, 20))
       should(eventsIds.slice().sort()).eql(eventsIds)
       done()
     })

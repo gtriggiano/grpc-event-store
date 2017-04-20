@@ -12,7 +12,7 @@ const libFolder = `../../${process.env.LIB_FOLDER}`
 const Implementation = require(`${libFolder}/GRPCServer/Implementation`).default
 
 describe('GRPC Implementation', () => {
-  describe.only('appendEventsToStream(call, callback)', () => {
+  describe('appendEventsToStream(call, callback)', () => {
     it('is a function', () => should(Implementation({}).appendEventsToStream).be.a.Function())
     it('invokes callback(error) if call.request.stream is not a non empty string', () => {
       let {config, args: {call, callback}} = Mocks()
