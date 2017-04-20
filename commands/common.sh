@@ -74,7 +74,7 @@ function cleanPostgreSQLInstance () {
 function setupPostgreSQLInstance () {
   cleanPostgreSQLInstance &> /dev/null
   startService postgresql &> /dev/null
-  sleep 2
+  sleep 4
 }
 
 function cleanTestServer () {
@@ -84,6 +84,7 @@ function cleanTestServer () {
 function startTestServer () {
   cleanTestServer &> /dev/null
   startService testServer &> /dev/null
+  sleep 2
 }
 
 function separator () {
