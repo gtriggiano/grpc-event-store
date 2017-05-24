@@ -5,7 +5,8 @@ import {
   sample,
   every,
   uniq,
-  isString
+  isString,
+  shuffle
 } from 'lodash'
 
 import {
@@ -136,6 +137,40 @@ describe('CockroachDBAdapter([config])', () => {
     }).throw(new RegExp('config.idleTimeoutMillis MUST be a positive integer higher then 999'))
     should(() => {
       CockroachDBAdapter({idleTimeoutMillis: 1000})
+    }).not.throw()
+  })
+  it('throws if config.ssl is not valid', () => {
+    should(() => {
+      CockroachDBAdapter({
+        ssl: 4
+      })
+    }).throw()
+    should(() => {
+      CockroachDBAdapter({
+        ssl: {}
+      })
+    }).throw()
+    should(() => {
+      const ssl = {
+        ca: 'xyz',
+        cert: 'xyz',
+        key: 'xyz'
+      }
+
+      const remainingKeys = shuffle(Object.keys(ssl)).slice(1)
+
+      CockroachDBAdapter({
+        ssl: remainingKeys.reduce((map, key) => ({...map, [key]: ssl[key]}), {})
+      })
+    }).throw()
+    should(() => {
+      CockroachDBAdapter({
+        ssl: {
+          ca: 'xyz',
+          cert: 'xyz',
+          key: 'xyz'
+        }
+      })
     }).not.throw()
   })
 })
