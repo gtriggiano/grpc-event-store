@@ -3,7 +3,8 @@ import path from 'path'
 import {
   isString,
   isInteger,
-  isEmpty
+  isEmpty,
+  isObject
 } from 'lodash'
 
 import {
@@ -29,7 +30,8 @@ function CockroachDBAdapter (config = {}) {
     user,
     maxPoolClients,
     minPoolClients,
-    idleTimeoutMillis
+    idleTimeoutMillis,
+    ssl
   } = _config
 
   let getConnection = poolConnectionGetter({
@@ -39,7 +41,8 @@ function CockroachDBAdapter (config = {}) {
     user,
     max: maxPoolClients,
     min: minPoolClients,
-    idleTimeoutMillis
+    idleTimeoutMillis,
+    ...(ssl ? {ssl} : {})
   })
 
   return Object.defineProperties({}, {
@@ -70,7 +73,8 @@ const defaultConfig = {
   user: 'root',
   maxPoolClients: 10,
   minPoolClients: undefined,
-  idleTimeoutMillis: 1000
+  idleTimeoutMillis: 1000,
+  ssl: undefined
 }
 
 const prefix = prefixedString('[grpc Event Store CockroachDBAdapter] ')
@@ -82,7 +86,8 @@ const validateConfig = ({
   user,
   maxPoolClients,
   minPoolClients,
-  idleTimeoutMillis
+  idleTimeoutMillis,
+  ssl
 }) => {
   if (!isString(host) || isEmpty(host)) throw new TypeError(prefix(`config.host MUST be a non empty string. Received ${host}`))
   if (!isInteger(port) || port < 1) throw new TypeError(prefix(``))
@@ -92,6 +97,13 @@ const validateConfig = ({
   if (!isInteger(maxPoolClients) || maxPoolClients < 1) throw new TypeError(prefix(`config.maxPoolClients MUST be a positive integer. Received ${maxPoolClients}`))
   if (minPoolClients && (!isInteger(minPoolClients) || minPoolClients > maxPoolClients || minPoolClients < 1)) throw new TypeError(prefix(`config.minPoolClients MUST be a positive integer lower than config.maxPoolClients. Received ${minPoolClients}`))
   if (!isInteger(idleTimeoutMillis) || idleTimeoutMillis < 1000) throw new TypeError(prefix(`config.idleTimeoutMillis MUST be a positive integer higher then 999. Received ${idleTimeoutMillis}`))
+  if (ssl !== undefined) {
+    let eMsg = prefix(`config.ssl MUST be either undefined or an object. {ca: String, cert: String, key: String}`)
+    if (!isObject(ssl)) throw new TypeError(eMsg)
+    if (!isString(ssl.ca) || isEmpty(ssl.ca)) throw new TypeError(eMsg)
+    if (!isString(ssl.cert) || isEmpty(ssl.cert)) throw new TypeError(eMsg)
+    if (!isString(ssl.key) || isEmpty(ssl.key)) throw new TypeError(eMsg)
+  }
 }
 
 let createTableSQL

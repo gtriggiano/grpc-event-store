@@ -5,7 +5,8 @@ import {
   sample,
   every,
   uniq,
-  isString
+  isString,
+  shuffle
 } from 'lodash'
 
 import {
@@ -147,6 +148,40 @@ describe('PostgreSQLAdapter([config])', () => {
     }).throw(new RegExp('config.idleTimeoutMillis MUST be a positive integer higher then 999'))
     should(() => {
       PostgreSQLAdapter({idleTimeoutMillis: 1000})
+    }).not.throw()
+  })
+  it('throws if config.ssl is not valid', () => {
+    should(() => {
+      PostgreSQLAdapter({
+        ssl: 4
+      })
+    }).throw()
+    should(() => {
+      PostgreSQLAdapter({
+        ssl: {}
+      })
+    }).throw()
+    should(() => {
+      const ssl = {
+        ca: 'xyz',
+        cert: 'xyz',
+        key: 'xyz'
+      }
+
+      const remainingKeys = shuffle(Object.keys(ssl)).slice(1)
+
+      PostgreSQLAdapter({
+        ssl: remainingKeys.reduce((map, key) => ({...map, [key]: ssl[key]}), {})
+      })
+    }).throw()
+    should(() => {
+      PostgreSQLAdapter({
+        ssl: {
+          ca: 'xyz',
+          cert: 'xyz',
+          key: 'xyz'
+        }
+      })
     }).not.throw()
   })
 })
