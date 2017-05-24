@@ -3,45 +3,37 @@
 PKG_NAME=grpceventstore
 
 function cleanContainers () {
-  echo
   echo -n 'Stopping and removing all containers... '
   docker-compose -p $PKG_NAME stop &>/dev/null
   docker-compose -p $PKG_NAME rm -f &>/dev/null
   echo 'Done.'
-  echo
 }
 
 function cleanService () {
   local SERVICE=$1
   if [[ -n "$SERVICE" ]]; then
-    echo
     echo -n "Stopping and removing all '$SERVICE' containers... "
     docker-compose -p $PKG_NAME stop $SERVICE &>/dev/null
     docker-compose -p $PKG_NAME rm -f $SERVICE &>/dev/null
     echo 'Done.'
-    echo
   fi
 }
 
 function startService () {
   local SERVICE=$1
   if [[ -n "$SERVICE" ]]; then
-    echo
     echo -n "Starting service '$SERVICE'... "
     docker-compose -p $PKG_NAME up -d $SERVICE &>/dev/null
     echo 'Done.'
-    echo
   fi
 }
 
 function stopService () {
   local SERVICE=$1
   if [[ -n "$SERVICE" ]]; then
-    echo
     echo -n "Stopping all '$SERVICE' containers... "
     docker-compose -p $PKG_NAME stop $SERVICE &>/dev/null
     echo 'Done.'
-    echo
   fi
 }
 
@@ -55,16 +47,18 @@ function runAsService () {
 }
 
 function cleanCockroachDbInstance () {
-  cleanService cockroachdb &> /dev/null
+  cleanService cockroachdb
 }
 
 function setupCockroachDbInstance () {
-  cleanCockroachDbInstance &> /dev/null
-  startService cockroachdb &> /dev/null
+  echo "CockroachDB Instance setup"
+  cleanCockroachDbInstance
+  startService cockroachdb
   sleep 2
-  docker exec "${PKG_NAME}_cockroachdb_1" ./cockroach sql -e "CREATE DATABASE eventstore;" &> /dev/null
+  docker exec "${PKG_NAME}_cockroachdb_1" ./cockroach sql --insecure -e "CREATE DATABASE eventstore;"
   CREATE_TABLE_SQL=$(cat ${BASH_SOURCE%/*}/../src/DbAdapters/CockroachDB/createTable.sql)
-  docker exec "${PKG_NAME}_cockroachdb_1" ./cockroach sql -d eventstore -e "$CREATE_TABLE_SQL" &> /dev/null
+  docker exec "${PKG_NAME}_cockroachdb_1" ./cockroach sql --insecure -d eventstore -e "$CREATE_TABLE_SQL"
+  echo "CockroachDB Instance setup END"
 }
 
 function cleanPostgreSQLInstance () {

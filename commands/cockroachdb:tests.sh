@@ -3,8 +3,8 @@
 source "${BASH_SOURCE%/*}/common.sh"
 
 echo -n "Preparing for CockroachDB adapter tests... "
-cleanService development &> /dev/null
-setupCockroachDbInstance &> /dev/null
+cleanService development > /dev/null
+setupCockroachDbInstance > /dev/null
 echo "Done"
 
 if [[ "$1" == "live" ]]; then
