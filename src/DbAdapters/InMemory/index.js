@@ -51,6 +51,8 @@ function InMemoryAdapter (config = {}) {
       }
       if (streamVersionNumber !== expectedVersionNumber) {
         err.reason = 'STREAM_VERSION_MISMATCH'
+        err.streamVersionNumber = streamVersionNumber
+        err.expectedVersionNumber = expectedVersionNumber
         return err
       }
     }
@@ -78,7 +80,7 @@ function InMemoryAdapter (config = {}) {
         let errors = processedAppendRequests.filter(result => result instanceof Error)
         if (errors.length) {
           process.nextTick(() => {
-            dbResults.emit('error', new Error(`CONSISTENCY|${JSON.stringify(errors.map(({stream, reason}) => ({stream, reason})))}`))
+            dbResults.emit('error', new Error(`CONSISTENCY|${JSON.stringify(errors.map(({stream, reason, streamVersionNumber, expectedVersionNumber}) => ({stream, reason, streamVersionNumber, expectedVersionNumber})))}`))
           })
         } else {
           let now = new Date()
