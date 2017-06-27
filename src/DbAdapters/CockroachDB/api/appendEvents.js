@@ -38,7 +38,7 @@ export default function appendEventsHOF (getConnection, eventsTable) {
           .then(processedAppendRequests => {
             let errors = processedAppendRequests.filter((result) => result instanceof Error)
             if (errors.length) {
-              throw new Error(`CONSISTENCY|${JSON.stringify(errors.map(({stream, reason}) => ({stream, reason})))}`)
+              throw new Error(`CONSISTENCY|${JSON.stringify(errors.map(({stream, reason, streamVersionNumber, expectedVersionNumber}) => ({stream, reason, streamVersionNumber, expectedVersionNumber})))}`)
             }
             return appendEventsToStreams({
               client,
@@ -78,6 +78,8 @@ function processAppendRequest ({
     }
     if (streamVersionNumber !== expectedVersionNumber) {
       err.reason = 'STREAM_VERSION_MISMATCH'
+      err.streamVersionNumber = streamVersionNumber
+      err.expectedVersionNumber = expectedVersionNumber
       return err
     }
   }
